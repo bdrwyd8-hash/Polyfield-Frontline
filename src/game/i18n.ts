@@ -89,29 +89,43 @@ export const STRINGS: Record<
     resupplyMsg: string;
     binocularsHint: string;
     shovelHint: string;
-    playModeOffline: string;
-    playModeOnline: string;
-    roomCodeLabel: string;
-    callsignLabel: string;
-    copyInviteBtn: string;
-    copiedInviteBtn: string;
-    teamSelectLabel: string;
-    teamAuto: string;
-    onlinePlayersBadge: string;
+    matchDurationLabel: string;
+    durationMinutesFmt: string;
     aimAssistLabel: string;
     enterJeep: string;
     enterTank: string;
     enterAircraft: string;
+    enterHelicopter: string;
     exitVehicle: string;
     vehicleBtn: string;
+    cockpitCamBtn: string;
     jeepName: string;
     tankName: string;
     aircraftName: string;
+    helicopterName: string;
     aircraftControlsHint: string;
+    helicopterControlsHint: string;
     targetFpsLabel: string;
+    autoOption: string;
+    fps30: string;
     fps60: string;
     fps120: string;
     fpsMax: string;
+    graphicsAuto: string;
+    storyCampaignBtn: string;
+    skirmishModeBtn: string;
+    campaignTitle: string;
+    campaignSubtitle: string;
+    campaignContinueBtn: string;
+    campaignPlayBtn: string;
+    campaignReplayBtn: string;
+    campaignResetBtn: string;
+    campaignLockedMsg: string;
+    campaignCompletedBadge: string;
+    skipCutsceneBtn: string;
+    exitBattleBtn: string;
+    missionCompleteBanner: string;
+    nextMissionBtn: string;
     gunsmithBtn: string;
     gunsmithTitle: string;
     gunsmithSubtitle: string;
@@ -151,6 +165,21 @@ export const STRINGS: Record<
     refStocksGripsTitle: string;
     refGearTitle: string;
     dragToRotateHint: string;
+    backpackBtn: string;
+    backpackTitle: string;
+    medkitLabel: string;
+    medkitUseBtn: string;
+    medkitFullMsg: string;
+    medkitEmptyMsg: string;
+    dropBombBtn: string;
+    fireMissileBtn: string;
+    flareBtn: string;
+    threatPullUp: string;
+    threatMissile: string;
+    threatEject: string;
+    missileLockedLabel: string;
+    missileSearchingLabel: string;
+    parachuteOpenMsg: string;
     actions: Record<KeyAction, string>;
     controlNames: Record<HudControlId, string>;
   }
@@ -243,29 +272,43 @@ export const STRINGS: Record<
     resupplyMsg: 'تم التزود بالذخيرة والإسعافات من القاعدة',
     binocularsHint: 'منظار استطلاع (ممنوع إطلاق النار · للاستطلاع فقط)',
     shovelHint: 'وجّه نقطة الحفر على الأرض واضغط الإطلاق لحفر خندق في أي مكان',
-    playModeOffline: 'لعب فردي (ضد الروبوتات)',
-    playModeOnline: 'لعب أونلاين (جماعي)',
-    roomCodeLabel: 'رمز الغرفة',
-    callsignLabel: 'اسمك بالمعركة',
-    copyInviteBtn: 'نسخ رابط الدعوة',
-    copiedInviteBtn: 'تم نسخ الرابط!',
-    teamSelectLabel: 'الفريق',
-    teamAuto: 'تلقائي',
-    onlinePlayersBadge: 'متصل بالغرفة',
+    matchDurationLabel: 'مدة المباراة',
+    durationMinutesFmt: 'دقيقة',
     aimAssistLabel: 'مساعد التصويب الخفيف',
     enterJeep: 'اضغط [X] أو زر المركبة لقيادة السيارة القتالية',
     enterTank: 'اضغط [X] أو زر المركبة لقيادة الدبابة',
     enterAircraft: 'اضغط [X] أو زر المركبة لقيادة الطائرة الحربية',
+    enterHelicopter: 'اضغط [X] أو زر المركبة لقيادة المروحية الهجومية',
     exitVehicle: 'مغادرة [X]',
     vehicleBtn: 'مركبة',
+    cockpitCamBtn: 'داخلي [N]',
     jeepName: 'سيارة قتالية مدرعة',
     tankName: 'دبابة قتال ثقيلة',
     aircraftName: 'مقاتلة حربية',
-    aircraftControlsHint: 'W/S سرعة · A/D انعطاف · Q/E أو سحب للشاشة صعود/هبوط · إطلاق نار',
+    helicopterName: 'مروحية هجومية مسلحة',
+    aircraftControlsHint: 'اسحب الشاشة للتوجيه الحر · W/S سرعة · C قنبلة · Q صاروخ حراري · N كاميرا داخلية · X مظلة',
+    helicopterControlsHint: 'W/S أمام/خلف · A/D التفاف · Space ارتفاع · C هبوط · F مدفع · Q صاروخ · N قمرة القيادة',
     targetFpsLabel: 'معدل الإطارات (FPS)',
+    autoOption: 'تلقائي (Auto)',
+    fps30: '30 FPS',
     fps60: '60 FPS',
     fps120: '120 FPS',
     fpsMax: 'مفتوح (Max)',
+    graphicsAuto: 'تلقائي (Auto)',
+    storyCampaignBtn: 'طور القصة: على خط المواجهة — الأردن',
+    skirmishModeBtn: 'معركة حرة (ضد الروبوتات)',
+    campaignTitle: 'على خط المواجهة — الأردن',
+    campaignSubtitle: 'رحلة المجند طارق المنصور عبر 4 فصول و20 مهمة متسلسلة',
+    campaignContinueBtn: 'متابعة المهمة',
+    campaignPlayBtn: 'بدء المهمة',
+    campaignReplayBtn: 'إعادة اللعب',
+    campaignResetBtn: 'إعادة ضبط التقدم',
+    campaignLockedMsg: 'أكمل المهمة السابقة لفتحها',
+    campaignCompletedBadge: 'مكتملة',
+    skipCutsceneBtn: 'تخطي المشهد',
+    exitBattleBtn: 'خروج للقائمة',
+    missionCompleteBanner: 'اكتملت المهمة بنجاح',
+    nextMissionBtn: 'المهمة التالية',
     gunsmithBtn: 'تخصيص الأسلحة والإضافات (Gunsmith)',
     gunsmithTitle: 'ورشة تخصيص الأسلحة الاحترافية',
     gunsmithSubtitle: 'ركّب المناظير والأخمصات والقبضات وكاتم الصوت والمخازن وشاهدها ثلاثية الأبعاد',
@@ -305,6 +348,21 @@ export const STRINGS: Record<
     refStocksGripsTitle: 'الأخمصات (5) والقبضات الأمامية (4)',
     refGearTitle: 'كاتم الصوت · الكشاف · الليزر · السكة · المخازن',
     dragToRotateHint: 'اسحب للتدوير 360° · عجلة الماوس للتقريب',
+    backpackBtn: 'الحقيبة [I]',
+    backpackTitle: 'حقيبة الظهر الميدانية والعتاد',
+    medkitLabel: 'حقيبة إسعافات أولية (+45 صحة)',
+    medkitUseBtn: 'علاج فوري',
+    medkitFullMsg: 'الصحة مكتملة',
+    medkitEmptyMsg: 'نفدت الإسعافات — تزود من القاعدة',
+    dropBombBtn: 'قنبلة',
+    fireMissileBtn: 'صاروخ IR',
+    flareBtn: 'فلاير',
+    threatPullUp: 'ارتفع فوراً · PULL UP',
+    threatMissile: 'صاروخ حراري! أطلق الفلاير · FLARE!',
+    threatEject: 'أضرار حرجة! اقفز بالمظلة · EJECT!',
+    missileLockedLabel: 'تم القفل الحراري',
+    missileSearchingLabel: 'بحث حراري...',
+    parachuteOpenMsg: 'المظلة مفتوحة — هبوط مظلي تكتيكي',
     actions: {
       moveForward: 'تقدم للأمام',
       moveBackward: 'تراجع للخلف',
@@ -326,9 +384,14 @@ export const STRINGS: Record<
       slot3: 'المسدس الثانوي (3)',
       slot4: 'المنظار اليدوي (4)',
       slot5: 'المجرفة / الحفارة (5)',
-      interact: 'ركوب / مغادرة المركبة والطائرة',
+      interact: 'ركوب / قفز بمظلة',
       armory: 'فتح مستودع الأسلحة بالقاعدة',
       toggleAccessory: 'تشغيل/إيقاف الكشاف أو الليزر',
+      backpack: 'فتح حقيبة الظهر والعتاد',
+      dropBomb: 'إسقاط قنبلة جو-أرض (طائرة)',
+      fireMissile: 'إطلاق صاروخ حراري (طائرة/مروحية)',
+      flare: 'إطلاق شعلات الفلاير الحرارية',
+      toggleCamera: 'تبديل كاميرا قمرة القيادة الداخلية',
     },
     controlNames: {
       joystick: 'عصا الحركة',
@@ -434,29 +497,43 @@ export const STRINGS: Record<
     resupplyMsg: 'Ammo & Supplies replenished at Base',
     binocularsHint: 'Recon Binoculars (Observation only · Firing disabled)',
     shovelHint: 'Aim the ground ring and press Fire to dig a foxhole anywhere',
-    playModeOffline: 'Solo vs Squad Bots',
-    playModeOnline: 'Online Multiplayer',
-    roomCodeLabel: 'Room Code',
-    callsignLabel: 'Callsign',
-    copyInviteBtn: 'Copy Invite Link',
-    copiedInviteBtn: 'Link Copied!',
-    teamSelectLabel: 'Team',
-    teamAuto: 'Auto',
-    onlinePlayersBadge: 'In Room',
+    matchDurationLabel: 'Match Duration',
+    durationMinutesFmt: 'min',
     aimAssistLabel: 'Light Aim Assist',
     enterJeep: 'Press [X] or Vehicle Button to Drive Gun Truck',
     enterTank: 'Press [X] or Vehicle Button to Command Tank',
     enterAircraft: 'Press [X] or Vehicle Button to Pilot Fighter Aircraft',
+    enterHelicopter: 'Press [X] or Vehicle Button to Pilot Attack Helicopter',
     exitVehicle: 'Exit [X]',
     vehicleBtn: 'Vehicle',
+    cockpitCamBtn: 'Cockpit [N]',
     jeepName: 'Armored Gun Truck',
     tankName: 'Heavy Battle Tank',
     aircraftName: 'Combat Fighter Plane',
-    aircraftControlsHint: 'W/S Throttle · A/D Bank Turn · Q/E Pitch Up/Down · Fire Wing Cannons',
+    helicopterName: 'Attack Helicopter',
+    aircraftControlsHint: 'Mouse/Drag Aim · W/S Throttle · C Bomb · Q IR Missile · N Cockpit Cam · X Parachute',
+    helicopterControlsHint: 'W/S Cyclic · A/D Yaw · Space Climb · C Descend · F Autocannon · Q Rockets · N Cockpit Cam',
     targetFpsLabel: 'Frame Rate Cap (FPS)',
+    autoOption: 'Auto',
+    fps30: '30 FPS',
     fps60: '60 FPS',
     fps120: '120 FPS',
     fpsMax: 'Uncapped',
+    graphicsAuto: 'Auto',
+    storyCampaignBtn: 'Story Campaign: On the Frontline — Jordan',
+    skirmishModeBtn: 'Skirmish (Solo vs Bots)',
+    campaignTitle: 'ON THE FRONTLINE — JORDAN',
+    campaignSubtitle: 'Follow 19-year-old recruit Tariq Al-Mansour across 4 Acts and 20 linear missions',
+    campaignContinueBtn: 'Continue Mission',
+    campaignPlayBtn: 'Play Mission',
+    campaignReplayBtn: 'Replay',
+    campaignResetBtn: 'Reset Progress',
+    campaignLockedMsg: 'Complete previous mission to unlock',
+    campaignCompletedBadge: 'COMPLETED',
+    skipCutsceneBtn: 'Skip Cutscene',
+    exitBattleBtn: 'Exit to Menu',
+    missionCompleteBanner: 'MISSION ACCOMPLISHED',
+    nextMissionBtn: 'Next Mission',
     gunsmithBtn: 'Weapon Gunsmith & Attachments',
     gunsmithTitle: 'Tactical Weapon Gunsmith',
     gunsmithSubtitle: 'Equip 3D optics, stocks, foregrips, suppressors, rails & extended magazines',
@@ -496,6 +573,21 @@ export const STRINGS: Record<
     refStocksGripsTitle: 'Rifle Stocks (5) & Foregrips (4)',
     refGearTitle: 'Suppressor · Flashlight · Laser · Rails · Magazines',
     dragToRotateHint: 'Drag to orbit 360° · Scroll to zoom',
+    backpackBtn: 'Bag [I]',
+    backpackTitle: 'Tactical Field Backpack',
+    medkitLabel: 'Field Medkit (+45 HP)',
+    medkitUseBtn: 'Apply Medkit',
+    medkitFullMsg: 'Health Full',
+    medkitEmptyMsg: 'No Medkits — Resupply at Base',
+    dropBombBtn: 'Bomb',
+    fireMissileBtn: 'IR Missile',
+    flareBtn: 'Flare',
+    threatPullUp: 'PULL UP! TERRAIN',
+    threatMissile: 'MISSILE! DEPLOY FLARES!',
+    threatEject: 'CRITICAL! EJECT! EJECT!',
+    missileLockedLabel: 'IR LOCK',
+    missileSearchingLabel: 'SEEKING...',
+    parachuteOpenMsg: 'PARACHUTE DEPLOYED — AERIAL DESCENT',
     actions: {
       moveForward: 'Move Forward',
       moveBackward: 'Move Backward',
@@ -517,9 +609,14 @@ export const STRINGS: Record<
       slot3: 'Sidearm Pistol (3)',
       slot4: 'Field Binoculars (4)',
       slot5: 'Entrenching Shovel (5)',
-      interact: 'Enter / Exit Vehicle & Aircraft',
+      interact: 'Enter Vehicle / Parachute Bailout',
       armory: 'Open Base Armory',
       toggleAccessory: 'Toggle Flashlight / Laser',
+      backpack: 'Open Tactical Backpack',
+      dropBomb: 'Drop Air-to-Ground Bomb',
+      fireMissile: 'Fire IR Homing Missile',
+      flare: 'Deploy Countermeasure Flares',
+      toggleCamera: 'Toggle Interior Cockpit Camera',
     },
     controlNames: {
       joystick: 'Move Joystick',

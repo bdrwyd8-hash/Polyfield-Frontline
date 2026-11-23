@@ -5,7 +5,18 @@ export function TacticalControlIcon({
   id,
   className = 'w-5 h-5',
 }: {
-  id: Exclude<HudControlId, 'joystick' | 'slots'> | 'binoculars' | 'shovel' | 'vehicle' | 'armory' | 'accessory';
+  id:
+    | Exclude<HudControlId, 'joystick' | 'slots'>
+    | 'binoculars'
+    | 'shovel'
+    | 'vehicle'
+    | 'armory'
+    | 'accessory'
+    | 'backpack'
+    | 'bomb'
+    | 'missile'
+    | 'eject'
+    | 'flare';
   className?: string;
 }) {
   switch (id) {
@@ -108,6 +119,42 @@ export function TacticalControlIcon({
       return (
         <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
           <path d="M3 9h7l4-3v12l-4-3H3V9zm13 2h5v2h-5v-2zm0-4.5l4.2-2.2.9 1.7-4.2 2.2-.9-1.7zm0 11l.9-1.7 4.2 2.2-.9 1.7-4.2-2.2z" />
+        </svg>
+      );
+    case 'backpack':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+          <path d="M9 4h6a2 2 0 0 1 2 2v1h1.5A1.5 1.5 0 0 1 20 8.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8.5A1.5 1.5 0 0 1 5.5 7H7V6a2 2 0 0 1 2-2zm0 3h6V6H9v1zm-2 4v6h10v-6H7zm2 2h6v1.8H9V13z" />
+        </svg>
+      );
+    case 'bomb':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+          <path d="M16 3l5 5-2 2-1.5-1.5-1.5 1.5a6.5 6.5 0 0 1-1.8 6.8l-3 3a4.2 4.2 0 0 1-6-6l3-3A6.5 6.5 0 0 1 15 9l1.5-1.5L15 6l1-3z" />
+        </svg>
+      );
+    case 'missile':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+          <path d="M20 4l-6 2-6 6-4-1-2 2 3.5 2.5L8 19l2-2-1-4 6-6 2-6z" />
+        </svg>
+      );
+    case 'eject':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+          <path d="M12 3c4.4 0 8 3 8 7H4c0-4 3.6-7 8-7zm-6.2 8l4.7 6.5v3.5h3v-3.5L18.2 11H16l-3.2 4.4V11h-1.6v4.4L8 11H5.8z" />
+        </svg>
+      );
+    case 'flare':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" aria-hidden="true">
+          <path d="M12 4v4" />
+          <path d="M12 8l-5.5 8.5" />
+          <path d="M12 8l5.5 8.5" />
+          <path d="M12 8v10" />
+          <circle cx="6" cy="18.5" r="1.6" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="19.5" r="1.6" fill="currentColor" stroke="none" />
+          <circle cx="18" cy="18.5" r="1.6" fill="currentColor" stroke="none" />
         </svg>
       );
   }

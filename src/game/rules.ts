@@ -15,17 +15,19 @@ import type {
 export const MAX_TICKETS = 250;
 export const TDM_MAX_TICKETS = 50;
 export const MATCH_DURATION_SECONDS = 420;
-export const ARENA_RADIUS = 260;
+export const MATCH_DURATION_OPTIONS = [180, 300, 420, 600, 900] as const;
+export const ARENA_RADIUS = 380;
 export const GRAVITY_ACCEL = 9.81;
 export const MAX_PLAYER_FOXHOLES = 8;
 
-export const ALLY_BASE_CENTER = { x: -192, z: 66 };
-export const AXIS_BASE_CENTER = { x: 192, z: -66 };
-export const ALLY_AIRFIELD_CENTER = { x: -178, z: 102 };
-export const AXIS_AIRFIELD_CENTER = { x: 178, z: -102 };
+export const ALLY_BASE_CENTER = { x: -285, z: 96 };
+export const AXIS_BASE_CENTER = { x: 285, z: -96 };
+export const ALLY_AIRFIELD_CENTER = { x: -265, z: 148 };
+export const AXIS_AIRFIELD_CENTER = { x: 265, z: -148 };
 
 export const PRIMARY_WEAPON_IDS: WeaponId[] = [
   'ak47',
+  'm4a1',
   'ppsh41',
   'm1_garand',
   'kar98k',
@@ -41,6 +43,7 @@ export const SLOT2_WEAPON_IDS: WeaponId[] = [
   'bazooka',
   'panzerschreck',
   'ak47',
+  'm4a1',
   'ppsh41',
   'thompson',
   'stg44',
@@ -66,10 +69,33 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.006,
     automatic: true,
     adsFov: 48,
-    muzzleSpeed: 132,
-    gravityScale: 1.8,
-    airDrag: 0.19,
-    rangeFalloffStart: 62,
+    muzzleSpeed: 340,
+    gravityScale: 0.92,
+    airDrag: 0.055,
+    rangeFalloffStart: 320,
+  },
+  m4a1: {
+    id: 'm4a1',
+    slotType: 'primary',
+    nameEn: 'M4A1 Tactical Carbine',
+    nameAr: 'بندقية M4A1 التكتيكية',
+    roleEn: '5.56×45mm Modular Carbine',
+    roleAr: 'بندقية حديثة 5.56 · دقة وثبات عالٍ',
+    damage: 34,
+    fireInterval: 0.092,
+    magSize: 30,
+    reserveMax: 180,
+    reloadTime: 1.7,
+    hipSpread: 0.024,
+    adsSpread: 0.0014,
+    recoilPitch: 0.0105,
+    recoilYaw: 0.0045,
+    automatic: true,
+    adsFov: 48,
+    muzzleSpeed: 380,
+    gravityScale: 0.85,
+    airDrag: 0.05,
+    rangeFalloffStart: 360,
   },
   ppsh41: {
     id: 'ppsh41',
@@ -89,10 +115,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.006,
     automatic: true,
     adsFov: 52,
-    muzzleSpeed: 108,
-    gravityScale: 2.0,
-    airDrag: 0.27,
-    rangeFalloffStart: 42,
+    muzzleSpeed: 235,
+    gravityScale: 1.25,
+    airDrag: 0.11,
+    rangeFalloffStart: 140,
   },
   m1_garand: {
     id: 'm1_garand',
@@ -112,10 +138,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.005,
     automatic: false,
     adsFov: 46,
-    muzzleSpeed: 138,
-    gravityScale: 1.75,
-    airDrag: 0.18,
-    rangeFalloffStart: 65,
+    muzzleSpeed: 365,
+    gravityScale: 0.88,
+    airDrag: 0.048,
+    rangeFalloffStart: 85,
   },
   kar98k: {
     id: 'kar98k',
@@ -135,10 +161,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.006,
     automatic: false,
     adsFov: 44,
-    muzzleSpeed: 152,
-    gravityScale: 1.6,
-    airDrag: 0.15,
-    rangeFalloffStart: 85,
+    muzzleSpeed: 410,
+    gravityScale: 0.82,
+    airDrag: 0.042,
+    rangeFalloffStart: 420,
   },
   thompson: {
     id: 'thompson',
@@ -158,10 +184,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.006,
     automatic: true,
     adsFov: 52,
-    muzzleSpeed: 96,
-    gravityScale: 2.15,
-    airDrag: 0.32,
-    rangeFalloffStart: 35,
+    muzzleSpeed: 215,
+    gravityScale: 1.35,
+    airDrag: 0.125,
+    rangeFalloffStart: 120,
   },
   mp40: {
     id: 'mp40',
@@ -181,10 +207,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.0045,
     automatic: true,
     adsFov: 52,
-    muzzleSpeed: 102,
-    gravityScale: 2.05,
-    airDrag: 0.28,
-    rangeFalloffStart: 40,
+    muzzleSpeed: 225,
+    gravityScale: 1.3,
+    airDrag: 0.115,
+    rangeFalloffStart: 135,
   },
   stg44: {
     id: 'stg44',
@@ -204,10 +230,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.005,
     automatic: true,
     adsFov: 48,
-    muzzleSpeed: 126,
-    gravityScale: 1.85,
-    airDrag: 0.21,
-    rangeFalloffStart: 58,
+    muzzleSpeed: 325,
+    gravityScale: 0.96,
+    airDrag: 0.06,
+    rangeFalloffStart: 290,
   },
   bar: {
     id: 'bar',
@@ -227,10 +253,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.007,
     automatic: true,
     adsFov: 47,
-    muzzleSpeed: 140,
-    gravityScale: 1.7,
-    airDrag: 0.17,
-    rangeFalloffStart: 70,
+    muzzleSpeed: 375,
+    gravityScale: 0.86,
+    airDrag: 0.048,
+    rangeFalloffStart: 420,
   },
   springfield: {
     id: 'springfield',
@@ -250,10 +276,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.006,
     automatic: false,
     adsFov: 24,
-    muzzleSpeed: 172,
-    gravityScale: 1.48,
-    airDrag: 0.12,
-    rangeFalloffStart: 120,
+    muzzleSpeed: 490,
+    gravityScale: 0.72,
+    airDrag: 0.035,
+    rangeFalloffStart: 680,
   },
   rpg7: {
     id: 'rpg7',
@@ -273,10 +299,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.007,
     automatic: false,
     adsFov: 44,
-    muzzleSpeed: 78,
-    gravityScale: 1.32,
-    airDrag: 0.04,
-    rangeFalloffStart: 160,
+    muzzleSpeed: 165,
+    gravityScale: 0.88,
+    airDrag: 0.025,
+    rangeFalloffStart: 400,
     isExplosive: true,
     blastRadius: 10.5,
   },
@@ -298,10 +324,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.008,
     automatic: false,
     adsFov: 50,
-    muzzleSpeed: 64,
-    gravityScale: 1.55,
-    airDrag: 0.06,
-    rangeFalloffStart: 140,
+    muzzleSpeed: 140,
+    gravityScale: 0.95,
+    airDrag: 0.03,
+    rangeFalloffStart: 340,
     isExplosive: true,
     blastRadius: 9.0,
   },
@@ -323,10 +349,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.009,
     automatic: false,
     adsFov: 50,
-    muzzleSpeed: 70,
-    gravityScale: 1.45,
-    airDrag: 0.05,
-    rangeFalloffStart: 150,
+    muzzleSpeed: 150,
+    gravityScale: 0.9,
+    airDrag: 0.028,
+    rangeFalloffStart: 360,
     isExplosive: true,
     blastRadius: 10.0,
   },
@@ -348,10 +374,10 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
     recoilYaw: 0.0045,
     automatic: false,
     adsFov: 56,
-    muzzleSpeed: 88,
-    gravityScale: 2.3,
-    airDrag: 0.36,
-    rangeFalloffStart: 25,
+    muzzleSpeed: 195,
+    gravityScale: 1.4,
+    airDrag: 0.14,
+    rangeFalloffStart: 75,
   },
   binoculars: {
     id: 'binoculars',
@@ -415,29 +441,49 @@ export const MAP_ZONES: Record<MapId, CaptureZoneConfig[]> = {
       label: 'A',
       nameEn: 'Timber Outpost',
       nameAr: 'موقع الأخشاب',
-      x: -106,
-      z: 34,
-      radius: 13,
+      x: -186,
+      z: 62,
+      radius: 14,
       initialOwner: 'allies',
     },
     {
       id: 'zone_b',
       label: 'B',
-      nameEn: 'River Crossing',
-      nameAr: 'معبر النهر',
-      x: 0,
-      z: 0,
-      radius: 13.5,
+      nameEn: 'West Ravine',
+      nameAr: 'الوادي الغربي',
+      x: -92,
+      z: -24,
+      radius: 14,
       initialOwner: null,
     },
     {
       id: 'zone_c',
       label: 'C',
+      nameEn: 'River Crossing',
+      nameAr: 'معبر النهر',
+      x: 0,
+      z: 0,
+      radius: 15,
+      initialOwner: null,
+    },
+    {
+      id: 'zone_d',
+      label: 'D',
+      nameEn: 'East Sawmill',
+      nameAr: 'منشرة الشرق',
+      x: 92,
+      z: 24,
+      radius: 14,
+      initialOwner: null,
+    },
+    {
+      id: 'zone_e',
+      label: 'E',
       nameEn: 'Pine Ridge Bunker',
       nameAr: 'حصن الغابة',
-      x: 106,
-      z: -34,
-      radius: 13,
+      x: 186,
+      z: -62,
+      radius: 14,
       initialOwner: 'axis',
     },
   ],
@@ -447,29 +493,49 @@ export const MAP_ZONES: Record<MapId, CaptureZoneConfig[]> = {
       label: 'A',
       nameEn: 'Fuel Depot',
       nameAr: 'مستودع الوقود',
-      x: -114,
-      z: -28,
-      radius: 13,
+      x: -192,
+      z: -48,
+      radius: 14,
       initialOwner: 'allies',
     },
     {
       id: 'zone_b',
       label: 'B',
-      nameEn: 'Oasis Ruins',
-      nameAr: 'أطلال الواحة',
-      x: 0,
-      z: 6,
-      radius: 13.5,
+      nameEn: 'Dune Overwatch',
+      nameAr: 'تلة الكثبان',
+      x: -94,
+      z: 36,
+      radius: 14,
       initialOwner: null,
     },
     {
       id: 'zone_c',
       label: 'C',
+      nameEn: 'Oasis Ruins',
+      nameAr: 'أطلال الواحة',
+      x: 0,
+      z: 6,
+      radius: 15,
+      initialOwner: null,
+    },
+    {
+      id: 'zone_d',
+      label: 'D',
+      nameEn: 'Canyon Convoy',
+      nameAr: 'ممر القوافل',
+      x: 94,
+      z: -32,
+      radius: 14,
+      initialOwner: null,
+    },
+    {
+      id: 'zone_e',
+      label: 'E',
       nameEn: 'Sandstone Fort',
       nameAr: 'قلعة الرمال',
-      x: 114,
-      z: 28,
-      radius: 13,
+      x: 192,
+      z: 48,
+      radius: 14,
       initialOwner: 'axis',
     },
   ],
@@ -477,31 +543,51 @@ export const MAP_ZONES: Record<MapId, CaptureZoneConfig[]> = {
     {
       id: 'zone_a',
       label: 'A',
-      nameEn: 'Village Square',
-      nameAr: 'ساحة القرية',
-      x: -104,
-      z: 34,
-      radius: 13,
+      nameEn: 'Orchard Manor',
+      nameAr: 'بستان القرية',
+      x: -186,
+      z: 60,
+      radius: 14,
       initialOwner: 'allies',
     },
     {
       id: 'zone_b',
       label: 'B',
-      nameEn: 'Stone Bridge',
-      nameAr: 'الجسر الحجري',
-      x: 0,
-      z: 0,
-      radius: 13.5,
+      nameEn: 'Village Square',
+      nameAr: 'ساحة القرية',
+      x: -90,
+      z: -16,
+      radius: 14,
       initialOwner: null,
     },
     {
       id: 'zone_c',
       label: 'C',
+      nameEn: 'Stone Bridge',
+      nameAr: 'الجسر الحجري',
+      x: 0,
+      z: 0,
+      radius: 15,
+      initialOwner: null,
+    },
+    {
+      id: 'zone_d',
+      label: 'D',
+      nameEn: 'Chapel Crossroads',
+      nameAr: 'مفترق الكنيسة',
+      x: 90,
+      z: 18,
+      radius: 14,
+      initialOwner: null,
+    },
+    {
+      id: 'zone_e',
+      label: 'E',
       nameEn: 'Ridge Bunker',
       nameAr: 'حصن التلة',
-      x: 104,
-      z: -34,
-      radius: 13,
+      x: 186,
+      z: -60,
+      radius: 14,
       initialOwner: 'axis',
     },
   ],
@@ -511,29 +597,49 @@ export const MAP_ZONES: Record<MapId, CaptureZoneConfig[]> = {
       label: 'A',
       nameEn: 'Railway Yard',
       nameAr: 'ساحة السكة الحديد',
-      x: -108,
-      z: 30,
-      radius: 13,
+      x: -190,
+      z: 52,
+      radius: 14,
       initialOwner: 'allies',
     },
     {
       id: 'zone_b',
       label: 'B',
-      nameEn: 'Central Square',
-      nameAr: 'الميدان المدمر',
-      x: 0,
-      z: 0,
+      nameEn: 'Grain Elevator',
+      nameAr: 'صومعة الحبوب',
+      x: -92,
+      z: -28,
       radius: 14,
       initialOwner: null,
     },
     {
       id: 'zone_c',
       label: 'C',
+      nameEn: 'Central Square',
+      nameAr: 'الميدان المدمر',
+      x: 0,
+      z: 0,
+      radius: 15,
+      initialOwner: null,
+    },
+    {
+      id: 'zone_d',
+      label: 'D',
+      nameEn: 'Foundry Hall',
+      nameAr: 'قاعة المسابك',
+      x: 92,
+      z: 28,
+      radius: 14,
+      initialOwner: null,
+    },
+    {
+      id: 'zone_e',
+      label: 'E',
       nameEn: 'Tractor Factory',
       nameAr: 'مصنع الجبهة',
-      x: 108,
-      z: -30,
-      radius: 13,
+      x: 190,
+      z: -52,
+      radius: 14,
       initialOwner: 'axis',
     },
   ],
@@ -643,7 +749,7 @@ export function groundHeightAt(
   }
 
   const distFromCenter = Math.hypot(x, z);
-  const rimRise = Math.max(0, distFromCenter - 238) * 0.28;
+  const rimRise = Math.max(0, distFromCenter - 356) * 0.28;
 
   let flatMask = 1.0;
 
@@ -1156,30 +1262,45 @@ export function stepFlightPhysics(
 ): FlightStepState {
   const minCruise = 22;
   const maxSpeed = 68;
-  const targetAccel = throttleInput > 0 ? 22 : throttleInput < 0 ? -18 : 0;
+  const targetAccel = throttleInput > 0 ? 24 : throttleInput < 0 ? -20 : 0;
+  // Energy-airframe coupling: diving adds airspeed, steep climbing bleeds airspeed slightly
+  const diveGravityAccel = -Math.sin(state.pitch) * 13.5;
+  const cruiseHold = throttleInput === 0 ? (34 - state.speed) * 0.25 * dt : 0;
   const nextSpeed = Math.max(
     minCruise,
-    Math.min(maxSpeed, state.speed + targetAccel * dt + (28 - state.speed) * 0.25 * dt),
+    Math.min(
+      maxSpeed,
+      state.speed + (targetAccel + diveGravityAccel) * dt + cruiseHold,
+    ),
   );
 
-  const targetRoll = -steerInput * 0.68;
-  const nextRoll = state.roll + (targetRoll - state.roll) * Math.min(1, dt * 5.2);
-  const nextYaw = state.yaw - steerInput * 1.15 * dt;
+  // Smooth exponential damping prevents jerky banking snaps during mouse/touch steering
+  const targetRoll = Math.max(-0.82, Math.min(0.82, steerInput * 0.68));
+  const rollBlend = 1 - Math.exp(-4.2 * dt);
+  const nextRoll = state.roll + (targetRoll - state.roll) * rollBlend;
 
-  const targetPitch = Math.max(-0.55, Math.min(0.55, state.pitch + pitchInput * 1.1 * dt));
-  const nextPitch = targetPitch - targetPitch * 0.45 * dt;
+  const airSpeedFactor = Math.max(0.68, Math.min(1.15, nextSpeed / 36));
+  const nextYaw = state.yaw - steerInput * 1.12 * airSpeedFactor * dt;
+
+  // Smooth pitch authority with mild aerodynamic return-to-level only when stick is neutral
+  const desiredPitchRate = pitchInput * 1.15;
+  let nextPitch = Math.max(-0.72, Math.min(0.72, state.pitch + desiredPitchRate * dt));
+  if (Math.abs(pitchInput) < 0.08) {
+    nextPitch *= Math.exp(-0.42 * dt);
+  }
 
   const cosP = Math.cos(nextPitch);
   let nx = state.x + Math.sin(nextYaw) * cosP * nextSpeed * dt;
   let nz = state.z + Math.cos(nextYaw) * cosP * nextSpeed * dt;
   let ny = state.y + Math.sin(nextPitch) * nextSpeed * dt;
 
-  // Lift keeps aircraft airborne smoothly above ground
+  // Lift keeps aircraft airborne cleanly above terrain unless crashed
   const minSafeAlt = groundY + 4.2;
   if (ny < minSafeAlt) {
     ny = minSafeAlt;
-  } else if (ny > 115) {
-    ny = 115;
+    if (nextPitch < 0) nextPitch *= Math.exp(-6.0 * dt);
+  } else if (ny > 125) {
+    ny = 125;
   }
 
   const dist = Math.hypot(nx, nz);
@@ -1199,4 +1320,579 @@ export function stepFlightPhysics(
     speed: nextSpeed,
   };
 }
+
+/**
+ * War Thunder Mobile style Instructor autopilot: maps aim cursor yaw/pitch error
+ * smoothly via progressive S-curve so micro-aim is rock steady while hard turns bank cleanly.
+ */
+export function computeFlightInstructorInputs(
+  currentYaw: number,
+  currentPitch: number,
+  aimYaw: number,
+  aimPitch: number,
+): { steerInput: number; pitchInput: number } {
+  let diffYaw = aimYaw - currentYaw;
+  while (diffYaw > Math.PI) diffYaw -= Math.PI * 2;
+  while (diffYaw < -Math.PI) diffYaw += Math.PI * 2;
+
+  const absYaw = Math.abs(diffYaw);
+  const yawDeadzone = absYaw < 0.008 ? 0 : diffYaw;
+  // Because yaw decreases when turning right (-X), negative diffYaw requires +steerInput
+  const steerInput = Math.tanh(-yawDeadzone * 1.85);
+
+  const diffPitch = aimPitch - currentPitch;
+  const pitchDeadzone = Math.abs(diffPitch) < 0.008 ? 0 : diffPitch;
+  const pitchInput = Math.tanh(pitchDeadzone * 2.15);
+  return { steerInput, pitchInput };
+}
+
+/**
+ * Resolves solid circle vs solid circular/cylindrical entities (ground vehicles & parked aircraft)
+ * so infantry soldiers never walk or clip inside vehicle hulls.
+ */
+export function resolveCircleEntities(
+  x: number,
+  z: number,
+  radius: number,
+  entities: ReadonlyArray<{ x: number; z: number; radius: number }>,
+): { x: number; z: number; hit: boolean } {
+  let px = x;
+  let pz = z;
+  let hit = false;
+  for (let i = 0; i < entities.length; i++) {
+    const e = entities[i];
+    const minDist = radius + e.radius;
+    const dx = px - e.x;
+    const dz = pz - e.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < minDist * minDist) {
+      hit = true;
+      const d = Math.sqrt(d2);
+      if (d < 1e-4) {
+        px = e.x + minDist;
+      } else {
+        const push = minDist / d;
+        px = e.x + dx * push;
+        pz = e.z + dz * push;
+      }
+    }
+  }
+  return { x: px, z: pz, hit };
+}
+
+export interface VehicleDriveState {
+  x: number;
+  z: number;
+  yaw: number;
+  speed: number;
+  steerAngle: number;
+}
+
+/**
+ * Smooth ground vehicle driving physics for Armored Gun Trucks and Battle Tanks:
+ * progressive throttle/brake curves, natural coasting drag, speed-coupled steering
+ * with authentic reverse inversion, and tank neutral-turn pivot.
+ */
+export function stepVehicleDriving(
+  kind: 'jeep' | 'tank',
+  state: VehicleDriveState,
+  throttleInput: number, // -1 .. +1
+  steerInput: number, // -1 (left) .. +1 (right)
+  dt: number,
+): VehicleDriveState {
+  const maxFwd = kind === 'tank' ? 10.5 : 16.5;
+  const maxRev = kind === 'tank' ? -5.0 : -7.5;
+  const accel = kind === 'tank' ? 7.8 : 13.0;
+  const brakeDecel = kind === 'tank' ? 18.0 : 24.0;
+  const coastDrag = kind === 'tank' ? 4.4 : 3.6;
+
+  let nextSpeed = state.speed;
+  if (throttleInput > 0.05) {
+    const rate = nextSpeed < 0 ? brakeDecel : accel;
+    nextSpeed = Math.min(maxFwd, nextSpeed + rate * throttleInput * dt);
+  } else if (throttleInput < -0.05) {
+    const rate = nextSpeed > 0 ? brakeDecel : accel * 0.72;
+    nextSpeed = Math.max(maxRev, nextSpeed + rate * throttleInput * dt);
+  } else {
+    const dragStep = coastDrag * dt;
+    if (Math.abs(nextSpeed) <= dragStep) {
+      nextSpeed = 0;
+    } else {
+      nextSpeed -= Math.sign(nextSpeed) * dragStep;
+    }
+  }
+
+  // Smooth front wheel visual steer angle (-steerInput: turning right pivots right tire inward/right)
+  const targetWheelSteer = -steerInput * 0.46;
+  const nextSteerAngle = state.steerAngle + (targetWheelSteer - state.steerAngle) * (1 - Math.exp(-9.0 * dt));
+
+  let turnRate = 0;
+  if (kind === 'tank') {
+    // Tanks can pivot smoothly in place AND turn cleanly under power
+    const speedScale = 0.78 + 0.22 * Math.min(1, Math.abs(nextSpeed) / 8);
+    const dirSign = nextSpeed < -0.6 ? -1 : 1;
+    turnRate = steerInput * 1.18 * speedScale * dirSign;
+  } else {
+    // Jeeps only turn noticeably while rolling; subtle creep assist when throttle held from stop
+    const effectiveSpeed = Math.abs(nextSpeed);
+    const rollAuthority =
+      effectiveSpeed > 0.35
+        ? Math.min(1, 0.25 + (effectiveSpeed / maxFwd) * 0.85)
+        : Math.abs(throttleInput) > 0.1
+          ? 0.22
+          : 0;
+    const dirSign = nextSpeed < -0.35 ? -1 : 1;
+    turnRate = steerInput * 1.72 * rollAuthority * dirSign;
+  }
+
+  const nextYaw = state.yaw - turnRate * dt;
+  const nextX = state.x + Math.sin(nextYaw) * nextSpeed * dt;
+  const nextZ = state.z + Math.cos(nextYaw) * nextSpeed * dt;
+
+  return {
+    x: nextX,
+    z: nextZ,
+    yaw: nextYaw,
+    speed: nextSpeed,
+    steerAngle: nextSteerAngle,
+  };
+}
+
+/**
+ * Strictly threat-gated cockpit warning selector:
+ * stays 'none' during normal takeoff/cruise/maneuvering and fires ONLY during genuine active danger.
+ */
+export function evaluateAircraftThreats(params: {
+  altAboveGround: number;
+  verticalSpeed: number;
+  pitch: number;
+  speed: number;
+  hpRatio: number;
+  incomingMissileDist: number | null;
+}): 'none' | 'pull_up' | 'missile' | 'eject' {
+  if (params.hpRatio <= 0.28) {
+    return 'eject';
+  }
+  if (params.incomingMissileDist !== null && params.incomingMissileDist <= 175) {
+    return 'missile';
+  }
+  const tti =
+    params.verticalSpeed < -0.5
+      ? params.altAboveGround / Math.max(0.5, -params.verticalSpeed)
+      : Infinity;
+  if (
+    params.altAboveGround < 18 &&
+    (params.verticalSpeed < -4.2 || (params.pitch < -0.22 && params.speed > 20 && tti < 1.85))
+  ) {
+    return 'pull_up';
+  }
+  return 'none';
+}
+
+/**
+ * Computes physical proximity pullback & side cant when approaching walls/trees/vehicles
+ * so the 1st-person weapon tucks cleanly without poking into geometry.
+ */
+export function computeWeaponWallTuck(obstacleDist: number): {
+  factor: number;
+  pullbackZ: number;
+  cantYaw: number;
+  cantPitch: number;
+} {
+  if (!Number.isFinite(obstacleDist) || obstacleDist >= 0.92) {
+    return { factor: 0, pullbackZ: 0, cantYaw: 0, cantPitch: 0 };
+  }
+  const factor = Math.max(0, Math.min(1, (0.92 - obstacleDist) / 0.65));
+  return {
+    factor,
+    pullbackZ: factor * 0.22,
+    cantYaw: factor * 0.42,
+    cantPitch: factor * 0.24,
+  };
+}
+
+/**
+ * Steps unguided air-to-ground bomb drop with forward inertia and gravity acceleration.
+ */
+export function stepBombDrop(
+  x: number,
+  y: number,
+  z: number,
+  vx: number,
+  vy: number,
+  vz: number,
+  dt: number,
+): { x: number; y: number; z: number; vx: number; vy: number; vz: number } {
+  const drag = Math.max(0.5, 1 - 0.06 * dt);
+  const nextVx = vx * drag;
+  const nextVz = vz * drag;
+  const nextVy = vy - GRAVITY_ACCEL * 1.45 * dt;
+  return {
+    x: x + nextVx * dt,
+    y: y + nextVy * dt,
+    z: z + nextVz * dt,
+    vx: nextVx,
+    vy: nextVy,
+    vz: nextVz,
+  };
+}
+
+/**
+ * Steps heat-seeking IR air-to-air / air-to-ground missile proportional homing steering.
+ */
+export function stepMissileHoming(
+  x: number,
+  y: number,
+  z: number,
+  vx: number,
+  vy: number,
+  vz: number,
+  targetX: number | null,
+  targetY: number | null,
+  targetZ: number | null,
+  speed: number,
+  maxTurnRadPerSec: number,
+  dt: number,
+): { x: number; y: number; z: number; vx: number; vy: number; vz: number } {
+  const curLen = Math.max(1e-4, Math.hypot(vx, vy, vz));
+  let dx = vx / curLen;
+  let dy = vy / curLen;
+  let dz = vz / curLen;
+
+  if (targetX !== null && targetY !== null && targetZ !== null) {
+    const tx = targetX - x;
+    const ty = targetY - y;
+    const tz = targetZ - z;
+    const tLen = Math.hypot(tx, ty, tz);
+    if (tLen > 0.25) {
+      const tdx = tx / tLen;
+      const tdy = ty / tLen;
+      const tdz = tz / tLen;
+      const dot = Math.max(-1, Math.min(1, dx * tdx + dy * tdy + dz * tdz));
+      const ang = Math.acos(dot);
+      if (ang > 0.002) {
+        const blend = Math.min(1, (maxTurnRadPerSec * dt) / ang);
+        dx += (tdx - dx) * blend;
+        dy += (tdy - dy) * blend;
+        dz += (tdz - dz) * blend;
+        const nLen = Math.max(1e-4, Math.hypot(dx, dy, dz));
+        dx /= nLen;
+        dy /= nLen;
+        dz /= nLen;
+      }
+    }
+  }
+
+  const nextVx = dx * speed;
+  const nextVy = dy * speed;
+  const nextVz = dz * speed;
+  return {
+    x: x + nextVx * dt,
+    y: y + nextVy * dt,
+    z: z + nextVz * dt,
+    vx: nextVx,
+    vy: nextVy,
+    vz: nextVz,
+  };
+}
+
+/**
+ * Steps parachute canopy deployment descent & aerodynamic pendulum sway until touchdown.
+ */
+export function stepParachutePhysics(
+  y: number,
+  vy: number,
+  swayPhase: number,
+  groundY: number,
+  dt: number,
+): { y: number; vy: number; swayRoll: number; landed: boolean } {
+  const terminalSinkRate = -5.6;
+  const nextVy = vy + (terminalSinkRate - vy) * Math.min(1, dt * 4.5);
+  const nextY = y + nextVy * dt;
+  const swayRoll = Math.sin(swayPhase * 1.9) * 0.14;
+  if (nextY <= groundY) {
+    return { y: groundY, vy: 0, swayRoll: 0, landed: true };
+  }
+  return { y: nextY, vy: nextVy, swayRoll, landed: false };
+}
+
+/**
+ * Zero-allocation analytical ray vs obstacle AABB & stepped terrain probe
+ * so 1P viewmodel tuck, laser sight length, and aim range run in microseconds without scene mesh raycasting.
+ */
+export function intersectObstaclesRay(
+  ox: number,
+  oy: number,
+  oz: number,
+  dx: number,
+  dy: number,
+  dz: number,
+  maxDist: number,
+  obstacles: ReadonlyArray<ObstacleBox>,
+  groundSampler?: (x: number, z: number) => number,
+): number | null {
+  let closest = maxDist;
+  let hit = false;
+
+  const invDx = Math.abs(dx) > 1e-6 ? 1 / dx : 1e9;
+  const invDy = Math.abs(dy) > 1e-6 ? 1 / dy : 1e9;
+  const invDz = Math.abs(dz) > 1e-6 ? 1 / dz : 1e9;
+
+  for (let i = 0; i < obstacles.length; i++) {
+    const b = obstacles[i];
+    const t1 = (b.minX - ox) * invDx;
+    const t2 = (b.maxX - ox) * invDx;
+    let tmin = Math.min(t1, t2);
+    let tmax = Math.max(t1, t2);
+
+    const t3 = (b.minZ - oz) * invDz;
+    const t4 = (b.maxZ - oz) * invDz;
+    tmin = Math.max(tmin, Math.min(t3, t4));
+    tmax = Math.min(tmax, Math.max(t3, t4));
+    if (tmax < Math.max(0, tmin) || tmin > closest) continue;
+
+    const cx = (b.minX + b.maxX) * 0.5;
+    const cz = (b.minZ + b.maxZ) * 0.5;
+    const baseY = groundSampler ? groundSampler(cx, cz) - 0.5 : -2;
+    const maxY = baseY + b.height + 0.5;
+    const t5 = (baseY - oy) * invDy;
+    const t6 = (maxY - oy) * invDy;
+    tmin = Math.max(tmin, Math.min(t5, t6));
+    tmax = Math.min(tmax, Math.max(t5, t6));
+    if (tmax >= Math.max(0, tmin) && tmin >= 0 && tmin < closest) {
+      closest = tmin;
+      hit = true;
+    }
+  }
+
+  if (groundSampler) {
+    const stepSize = Math.max(1.2, maxDist / 36);
+    for (let dist = stepSize; dist <= closest; dist += stepSize) {
+      const px = ox + dx * dist;
+      const py = oy + dy * dist;
+      const pz = oz + dz * dist;
+      if (py <= groundSampler(px, pz)) {
+        closest = dist;
+        hit = true;
+        break;
+      }
+    }
+  }
+
+  return hit ? closest : null;
+}
+
+export interface SuspensionState {
+  wheelOffsets: [number, number, number, number]; // FL, FR, RL, RR vertical travel meters
+  wheelVelocities: [number, number, number, number];
+  chassisHeave: number;
+  chassisPitch: number;
+  chassisRoll: number;
+}
+
+/**
+ * Independent 4-wheel suspension articulation (Wheel Articulation):
+ * samples terrain elevation under each wheel independently, drives damped spring-damper travel
+ * per wheel, and derives realistic chassis heave, terrain slope pitch/roll, acceleration squat, and corner roll.
+ */
+export function stepSuspensionArticulation(
+  prev: SuspensionState,
+  centerGroundY: number,
+  wheelGroundHeights: [number, number, number, number], // FL, FR, RL, RR
+  wheelBaseHalfZ: number,
+  trackHalfX: number,
+  longitudinalAccel: number,
+  lateralTurnSpeed: number,
+  maxTravel: number,
+  dt: number,
+): SuspensionState {
+  const springK = 92;
+  const damperC = 14.5;
+  const nextOffsets: [number, number, number, number] = [0, 0, 0, 0];
+  const nextVels: [number, number, number, number] = [0, 0, 0, 0];
+
+  for (let i = 0; i < 4; i++) {
+    const isFront = i < 2;
+    const isRight = i === 1 || i === 3;
+    const terrainDelta = wheelGroundHeights[i] - centerGroundY;
+    // Dynamic weight transfer from accel/braking & cornering shifts chassis over suspension
+    const pitchTransfer = (isFront ? -1 : 1) * Math.max(-0.12, Math.min(0.12, longitudinalAccel * 0.008));
+    const rollTransfer = (isRight ? 1 : -1) * Math.max(-0.1, Math.min(0.1, lateralTurnSpeed * 0.0045));
+    const targetOffset = Math.max(
+      -maxTravel,
+      Math.min(maxTravel, terrainDelta + pitchTransfer + rollTransfer),
+    );
+
+    const disp = targetOffset - prev.wheelOffsets[i];
+    const accel = disp * springK - prev.wheelVelocities[i] * damperC;
+    let nv = prev.wheelVelocities[i] + accel * dt;
+    let no = prev.wheelOffsets[i] + nv * dt;
+    if (no > maxTravel) {
+      no = maxTravel;
+      nv = Math.min(0, nv);
+    } else if (no < -maxTravel) {
+      no = -maxTravel;
+      nv = Math.max(0, nv);
+    }
+    nextOffsets[i] = no;
+    nextVels[i] = nv;
+  }
+
+  const avgHeave = (nextOffsets[0] + nextOffsets[1] + nextOffsets[2] + nextOffsets[3]) * 0.25;
+  const frontAvg = (nextOffsets[0] + nextOffsets[1]) * 0.5;
+  const rearAvg = (nextOffsets[2] + nextOffsets[3]) * 0.5;
+  const leftAvg = (nextOffsets[0] + nextOffsets[2]) * 0.5;
+  const rightAvg = (nextOffsets[1] + nextOffsets[3]) * 0.5;
+
+  const terrainPitch = Math.atan2(rearAvg - frontAvg, Math.max(0.5, wheelBaseHalfZ * 2));
+  const terrainRoll = Math.atan2(rightAvg - leftAvg, Math.max(0.5, trackHalfX * 2));
+  const accelPitch = Math.max(-0.08, Math.min(0.08, -longitudinalAccel * 0.006));
+  const cornerRoll = Math.max(-0.11, Math.min(0.11, lateralTurnSpeed * 0.0042));
+
+  const blend = 1 - Math.exp(-12 * dt);
+  return {
+    wheelOffsets: nextOffsets,
+    wheelVelocities: nextVels,
+    chassisHeave: prev.chassisHeave + (avgHeave * 0.55 - prev.chassisHeave) * blend,
+    chassisPitch: prev.chassisPitch + (terrainPitch * 0.85 + accelPitch - prev.chassisPitch) * blend,
+    chassisRoll: prev.chassisRoll + (terrainRoll * 0.85 + cornerRoll - prev.chassisRoll) * blend,
+  };
+}
+
+export interface AutoHardwareCapabilities {
+  isSoftwareGl: boolean;
+  maxTextureSize: number;
+  hardwareConcurrency: number;
+  deviceMemory?: number;
+}
+
+export interface AutoGraphicsResolution {
+  quality: 'low' | 'medium' | 'high';
+  fps: 30 | 60 | 120;
+}
+
+/**
+ * Deterministically selects optimal graphics quality and target FPS from actual device GPU/CPU capabilities.
+ * Zero randomness — identical hardware inputs always yield identical output.
+ */
+export function resolveAutoGraphicsConfig(
+  caps: AutoHardwareCapabilities,
+): AutoGraphicsResolution {
+  const mem = typeof caps.deviceMemory === 'number' && caps.deviceMemory > 0 ? caps.deviceMemory : 4;
+  const cores = Math.max(1, caps.hardwareConcurrency || 4);
+  const tex = Math.max(512, caps.maxTextureSize || 2048);
+
+  if (caps.isSoftwareGl || tex < 2048 || cores <= 2 || mem <= 2) {
+    return { quality: 'low', fps: 30 };
+  }
+  if (tex >= 8192 && cores >= 8 && mem >= 8) {
+    return { quality: 'high', fps: 120 };
+  }
+  if (tex >= 4096 && cores >= 4 && mem >= 4) {
+    return { quality: 'medium', fps: 60 };
+  }
+  return { quality: 'low', fps: 60 };
+}
+
+export interface HelicopterFlightState {
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  yaw: number;
+  pitch: number;
+  roll: number;
+  collective: number; // 0..1 rotor collective power
+  rotorPhase: number;
+}
+
+/**
+ * Pure helicopter rotor-craft aerodynamics:
+ * - collective controls climb/hover/descent
+ * - cyclicForward (-1..1) pitches nose forward/back to accelerate/decelerate horizontally
+ * - cyclicStrafe (-1..1) banks lateral roll for strafe/turning
+ * - yawInput (-1..1) rotates anti-torque tail pedals
+ */
+export function stepHelicopterPhysics(
+  state: HelicopterFlightState,
+  cyclicForward: number,
+  yawInput: number,
+  collectiveDelta: number,
+  groundY: number,
+  dt: number,
+  cyclicStrafe = 0,
+): HelicopterFlightState {
+  const nextCollective = Math.max(0.18, Math.min(1.0, state.collective + collectiveDelta * 0.55 * dt));
+
+  const targetPitch = -cyclicForward * 0.34;
+  const targetRoll = -cyclicStrafe * 0.36 - yawInput * 0.24;
+  const tiltBlend = 1 - Math.exp(-5.5 * dt);
+  const nextPitch = state.pitch + (targetPitch - state.pitch) * tiltBlend;
+  const nextRoll = state.roll + (targetRoll - state.roll) * tiltBlend;
+
+  const nextYaw = state.yaw - yawInput * 1.45 * dt;
+  const fwdX = Math.sin(nextYaw);
+  const fwdZ = Math.cos(nextYaw);
+  const rightX = Math.cos(nextYaw);
+  const rightZ = -Math.sin(nextYaw);
+
+  // Thrust directed by tilted main rotor disc
+  const thrustAccel = 28.0 * nextCollective;
+  const fwdPush = -Math.sin(nextPitch) * thrustAccel;
+  const latPush = -Math.sin(nextRoll) * thrustAccel * 0.72;
+  const drag = Math.exp(-1.15 * dt);
+
+  let nextVx = (state.vx + (fwdX * fwdPush + rightX * latPush) * dt) * drag;
+  let nextVz = (state.vz + (fwdZ * fwdPush + rightZ * latPush) * dt) * drag;
+
+  const hSpeed = Math.hypot(nextVx, nextVz);
+  const maxHorizSpeed = 34.0;
+  if (hSpeed > maxHorizSpeed) {
+    nextVx = (nextVx / hSpeed) * maxHorizSpeed;
+    nextVz = (nextVz / hSpeed) * maxHorizSpeed;
+  }
+
+  // Hover equilibrium around collective ~0.52
+  const verticalLift = (nextCollective - 0.52) * 26.0 * Math.cos(nextPitch * 0.5) * Math.cos(nextRoll * 0.5);
+  const nextVy = Math.max(-14, Math.min(15, (state.vy + verticalLift * dt) * Math.exp(-1.8 * dt)));
+
+  let nextX = state.x + nextVx * dt;
+  let nextZ = state.z + nextVz * dt;
+  let nextY = state.y + nextVy * dt;
+
+  const maxR = ARENA_RADIUS - 12;
+  const r = Math.hypot(nextX, nextZ);
+  if (r > maxR) {
+    nextX = (nextX / r) * maxR;
+    nextZ = (nextZ / r) * maxR;
+  }
+
+  const minFloor = groundY + 1.35;
+  let clampedVy = nextVy;
+  if (nextY < minFloor) {
+    nextY = minFloor;
+    if (clampedVy < 0) clampedVy = 0;
+  }
+  if (nextY > 135) {
+    nextY = 135;
+    if (clampedVy > 0) clampedVy = 0;
+  }
+
+  return {
+    x: nextX,
+    y: nextY,
+    z: nextZ,
+    vx: nextVx,
+    vy: clampedVy,
+    vz: nextVz,
+    yaw: nextYaw,
+    pitch: nextPitch,
+    roll: nextRoll,
+    collective: nextCollective,
+    rotorPhase: state.rotorPhase + dt * (18 + nextCollective * 18),
+  };
+}
+
 

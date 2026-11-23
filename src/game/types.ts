@@ -6,14 +6,15 @@ export type MapId = 'forest' | 'desert' | 'normandy' | 'stalingrad';
 
 export type GameMode = 'conquest' | 'tdm' | 'hardcore';
 
-export type GraphicsQuality = 'low' | 'medium' | 'high';
+export type GraphicsQuality = 'auto' | 'low' | 'medium' | 'high';
 
-export type TargetFps = 60 | 120 | 0; // 0 = Uncapped / Max refresh rate
+export type TargetFps = 'auto' | 30 | 60 | 120 | 0; // 0 = Uncapped / Max refresh rate
 
 export type LoadoutId = 'rifleman' | 'assault' | 'heavy' | 'marksman';
 
 export type WeaponId =
   | 'ak47'
+  | 'm4a1'
   | 'ppsh41'
   | 'm1_garand'
   | 'kar98k'
@@ -79,12 +80,20 @@ export interface WeaponAttachmentLoadout {
 
 export type WeaponCustomizationsMap = Partial<Record<WeaponId, WeaponAttachmentLoadout>>;
 
-export type VehicleKind = 'jeep' | 'tank' | 'aircraft';
+export type VehicleKind = 'jeep' | 'tank' | 'aircraft' | 'helicopter';
 
 export interface KillcamInfo {
   killerName: string;
   killerTeam: Team;
-  killerWeaponId: WeaponId | 'tank_cannon' | 'aircraft_cannon' | 'grenade';
+  killerWeaponId:
+    | WeaponId
+    | 'tank_cannon'
+    | 'aircraft_cannon'
+    | 'aircraft_bomb'
+    | 'aircraft_missile'
+    | 'helicopter_cannon'
+    | 'helicopter_rocket'
+    | 'grenade';
   killerDistanceM: number;
   killerHp: number;
   killerMaxHp: number;
@@ -122,7 +131,14 @@ export type KeyAction =
   | 'slot5'
   | 'interact'
   | 'armory'
-  | 'toggleAccessory';
+  | 'toggleAccessory'
+  | 'backpack'
+  | 'dropBomb'
+  | 'fireMissile'
+  | 'flare'
+  | 'toggleCamera';
+
+export type AircraftThreatWarning = 'none' | 'pull_up' | 'missile' | 'eject';
 
 export type HudControlId =
   | 'joystick'
@@ -232,7 +248,7 @@ export interface KillFeedItem {
   killerTeam: Team;
   victimName: string;
   victimTeam: Team;
-  weaponId: WeaponId | 'grenade';
+  weaponId: KillcamInfo['killerWeaponId'];
   isHeadshot: boolean;
   timestamp: number;
 }
@@ -246,22 +262,34 @@ export interface MinimapActor {
   vehicleKind?: VehicleKind;
 }
 
-export type MultiplayerStatus = 'offline' | 'connecting' | 'connected';
+export interface CampaignSubtitleState {
+  speakerId: string;
+  speakerNameEn: string;
+  speakerNameAr: string;
+  textEn: string;
+  textAr: string;
+}
 
-export interface RemotePlayerSnapshot {
-  id: string;
-  name: string;
-  team: Team;
-  weaponId: WeaponId;
-  x: number;
-  y: number;
-  z: number;
-  yaw: number;
-  pitch: number;
-  crouching: boolean;
-  alive: boolean;
-  hp: number;
-  animPhase: number;
+export interface CampaignHudState {
+  active: boolean;
+  missionId: number;
+  actNumber: number;
+  titleEn: string;
+  titleAr: string;
+  objectiveEn: string;
+  objectiveAr: string;
+  locationEn: string;
+  locationAr: string;
+  showLetterOverlay: boolean;
+  isCutscene: boolean;
+  isNonCombat: boolean;
+  isPassengerLock: boolean;
+  canSkipCutscene: boolean;
+  timeLapseTextEn: string | null;
+  timeLapseTextAr: string | null;
+  subtitle: CampaignSubtitleState | null;
+  missionComplete: boolean;
+  mudLevel: number;
 }
 
 export interface HudSnapshot {
@@ -270,10 +298,6 @@ export interface HudSnapshot {
   gameMode: GameMode;
   loadoutId: LoadoutId;
   playerTeam: Team;
-  isOnline: boolean;
-  onlineStatus: MultiplayerStatus;
-  onlineRoomCode: string;
-  onlinePlayerCount: number;
   health: number;
   maxHealth: number;
   stamina: number;
@@ -343,4 +367,26 @@ export interface HudSnapshot {
   vehicleReticleX: number;
   vehicleReticleY: number;
   vehicleReticleVisible: boolean;
+  aircraftBombs: number;
+  aircraftBombsMax: number;
+  aircraftMissiles: number;
+  aircraftMissilesMax: number;
+  aircraftFlares: number;
+  aircraftFlaresMax: number;
+  aircraftThrottlePct: number;
+  aircraftLockActive: boolean;
+  aircraftLockTargetName: string | null;
+  aircraftThreatWarning: AircraftThreatWarning;
+  flightAimX: number;
+  flightAimY: number;
+  isParachuting: boolean;
+  parachuteAltitudeM: number;
+  backpackMedkits: number;
+  backpackMedkitsMax: number;
+  vehicleInteriorCamera: boolean;
+  matchDurationSeconds: number;
+  mudLevel: number;
+  resolvedGraphicsQuality: 'low' | 'medium' | 'high';
+  resolvedTargetFps: 0 | 30 | 60 | 120;
+  campaign?: CampaignHudState;
 }

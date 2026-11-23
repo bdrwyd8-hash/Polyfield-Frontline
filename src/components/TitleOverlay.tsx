@@ -310,9 +310,9 @@ export function TitleOverlay({
                     onSelectMap(m);
                   }}
                   style={{ background: art.fallbackBg }}
-                  className={`relative h-16 sm:h-20 overflow-hidden border-2 transition-all cursor-pointer group text-start ${
+                  className={`relative h-16 sm:h-20 overflow-hidden border transition-colors cursor-pointer group text-start ${
                     active
-                      ? 'border-amber-400 shadow-[0_0_16px_rgba(251,191,36,0.35)] scale-[1.01]'
+                      ? 'border-amber-400 ring-1 ring-amber-400/60'
                       : 'border-stone-700/90 opacity-85 hover:opacity-100 hover:border-stone-500'
                   }`}
                 >

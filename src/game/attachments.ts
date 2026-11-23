@@ -427,7 +427,7 @@ export function getWeaponMountCapabilities(weaponId: WeaponId): WeaponMountCapab
       defaultOptic: weaponId === 'springfield' ? 'scope_4x' : 'iron',
     };
   }
-  // Full modern/assault modular platform (AK-47, StG-44, BAR, PPSh-41, Thompson, MP40)
+  // Full modern/assault modular platform (M4A1, AK-47, StG-44, BAR, PPSh-41, Thompson, MP40)
   return {
     supportsOptic: true,
     supportsStock: true,
@@ -436,7 +436,7 @@ export function getWeaponMountCapabilities(weaponId: WeaponId): WeaponMountCapab
     supportsRail: true,
     supportsMagazine: true,
     supportsDrumMag: true,
-    defaultOptic: 'iron',
+    defaultOptic: weaponId === 'm4a1' ? 'holo' : 'iron',
   };
 }
 

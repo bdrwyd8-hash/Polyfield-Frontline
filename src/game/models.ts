@@ -12,130 +12,90 @@ import {
   buildSuppressor3D,
   getWeaponMountAnchors,
 } from './attachments3d';
+import {
+  getArmorSteelPbrSet,
+  getAsphaltPbrSet,
+  getBduCamoPbrSet,
+  getBrickPbrSet,
+  getConcretePbrSet,
+  getGunmetalPbrSet,
+  getPolymerPbrSet,
+  getRockPbrSet,
+  getRubberTreadPbrSet,
+  getStuccoPbrSet,
+  getTimberPbrSet,
+  getWoodStockPbrSet,
+  type PbrTextureSet,
+} from './pbrTextures';
 
 function makePbrMat(
   color: number,
   roughness = 0.72,
   metalness = 0.08,
-  flatShading = false,
+  _flatShading = false,
   extra: Partial<THREE.MeshStandardMaterialParameters> = {},
 ): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
     color,
     roughness,
     metalness,
-    flatShading,
+    flatShading: false,
     ...extra,
   });
 }
 
-let cachedWoodTex: THREE.CanvasTexture | null = null;
-function getWoodGrainTexture(): THREE.CanvasTexture | null {
-  if (typeof document === 'undefined') return null;
-  if (cachedWoodTex) return cachedWoodTex;
-  const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 128;
-  const ctx = c.getContext('2d');
-  if (!ctx) return null;
-  ctx.fillStyle = '#d6c3b0';
-  ctx.fillRect(0, 0, 128, 128);
-  for (let y = 0; y < 128; y += 2) {
-    const tone = 165 + Math.round(Math.sin(y * 0.35) * 24 + ((y * 37) % 18));
-    ctx.fillStyle = `rgb(${tone}, ${Math.round(tone * 0.85)}, ${Math.round(tone * 0.72)})`;
-    ctx.fillRect(0, y, 128, 2);
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  cachedWoodTex = tex;
-  return tex;
-}
-
-let cachedGunmetalTex: THREE.CanvasTexture | null = null;
-function getGunmetalTexture(): THREE.CanvasTexture | null {
-  if (typeof document === 'undefined') return null;
-  if (cachedGunmetalTex) return cachedGunmetalTex;
-  const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 128;
-  const ctx = c.getContext('2d');
-  if (!ctx) return null;
-  ctx.fillStyle = '#c8cdd4';
-  ctx.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 420; i++) {
-    const x = (i * 53) % 128;
-    const y = (i * 97) % 128;
-    const v = 175 + ((i * 29) % 60);
-    ctx.fillStyle = `rgb(${v},${v},${v})`;
-    ctx.fillRect(x, y, 6, 1);
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  cachedGunmetalTex = tex;
-  return tex;
-}
-
-const cachedBduTex: Partial<Record<Team, THREE.CanvasTexture>> = {};
-function getBduCamoTexture(team: Team): THREE.CanvasTexture | null {
-  if (typeof document === 'undefined') return null;
-  if (cachedBduTex[team]) return cachedBduTex[team]!;
-  const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 128;
-  const ctx = c.getContext('2d');
-  if (!ctx) return null;
-  ctx.fillStyle = team === 'allies' ? '#586b4a' : '#5e625c';
-  ctx.fillRect(0, 0, 128, 128);
-  const swatches =
-    team === 'allies'
-      ? ['#445439', '#6e7e59', '#3b4832', '#7a6f52']
-      : ['#4b4f4a', '#70746d', '#3e413e', '#565047'];
-  for (let i = 0; i < 64; i++) {
-    ctx.fillStyle = swatches[i % swatches.length];
-    const x = (i * 47) % 120;
-    const y = (i * 83) % 120;
-    const w = 12 + (i % 16);
-    const h = 8 + ((i * 3) % 14);
-    ctx.fillRect(x, y, w, h);
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  cachedBduTex[team] = tex;
-  return tex;
+function pbrSetProps(
+  set: PbrTextureSet | null,
+  bumpScale = 0.015,
+  includeMap = true,
+  includeRoughness = true,
+): Partial<THREE.MeshStandardMaterialParameters> {
+  if (!set || typeof document === 'undefined') return {};
+  const out: Partial<THREE.MeshStandardMaterialParameters> = {
+    bumpMap: set.bumpMap,
+    bumpScale,
+  };
+  if (includeMap) out.map = set.map;
+  if (includeRoughness && set.roughnessMap) out.roughnessMap = set.roughnessMap;
+  return out;
 }
 
 export function createRealisticMuzzleFlash(scale = 1): THREE.Group {
   const flash = new THREE.Group();
   const outerMat = new THREE.MeshBasicMaterial({
-    color: 0xff8c1a,
+    color: 0xff7b14,
     transparent: true,
     opacity: 0.86,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
-  const coreMat = new THREE.MeshBasicMaterial({
-    color: 0xfff3c4,
+  const midMat = new THREE.MeshBasicMaterial({
+    color: 0xffb732,
     transparent: true,
-    opacity: 0.96,
+    opacity: 0.92,
+    side: THREE.DoubleSide,
     depthWrite: false,
   });
-  const bladeGeo = new THREE.PlaneGeometry(0.24 * scale, 0.08 * scale);
-  for (let i = 0; i < 3; i++) {
+  const coreMat = new THREE.MeshBasicMaterial({
+    color: 0xfff8db,
+    transparent: true,
+    opacity: 0.98,
+    depthWrite: false,
+  });
+  const bladeGeo = new THREE.PlaneGeometry(0.28 * scale, 0.085 * scale);
+  for (let i = 0; i < 4; i++) {
     const blade = new THREE.Mesh(bladeGeo, outerMat);
-    blade.rotation.z = (i * Math.PI) / 3;
+    blade.rotation.z = (i * Math.PI) / 4;
     flash.add(blade);
   }
-  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.055 * scale, 0.22 * scale, 6), outerMat);
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.062 * scale, 0.28 * scale, 7), midMat);
   cone.rotation.x = Math.PI / 2;
-  cone.position.z = 0.09 * scale;
-  const core = new THREE.Mesh(new THREE.SphereGeometry(0.048 * scale, 6, 5), coreMat);
-  flash.add(cone, core);
+  cone.position.z = 0.11 * scale;
+  const innerCone = new THREE.Mesh(new THREE.ConeGeometry(0.036 * scale, 0.16 * scale, 6), coreMat);
+  innerCone.rotation.x = Math.PI / 2;
+  innerCone.position.z = 0.065 * scale;
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.052 * scale, 6, 5), coreMat);
+  flash.add(cone, innerCone, core);
   flash.visible = false;
   return flash;
 }
@@ -180,41 +140,102 @@ export interface SoldierRig {
   root: THREE.Group;
   bodyPivot: THREE.Group;
   headGroup: THREE.Group;
+  eyelidL: THREE.Mesh;
+  eyelidR: THREE.Mesh;
+  browL: THREE.Mesh;
+  browR: THREE.Mesh;
+  jawGroup: THREE.Group;
   leftArm: THREE.Group;
   rightArm: THREE.Group;
   weaponMount: THREE.Group;
   leftLeg: THREE.Group;
   rightLeg: THREE.Group;
+  leftKnee: THREE.Group;
+  rightKnee: THREE.Group;
   muzzleFlash: THREE.Object3D;
   telegraphGlint: THREE.Mesh;
   healBadge: THREE.Group;
+  mudOverlays: THREE.Mesh[];
   hitFlashMaterials: THREE.MeshStandardMaterial[];
 }
 
-export function createLowPolySoldier(team: Team, role: BotRole): SoldierRig {
+export interface SoldierAppearanceOptions {
+  skinColor?: number;
+  tunicColor?: number;
+  helmetColor?: number;
+  unarmed?: boolean;
+  hideHelmet?: boolean;
+  mudLevel?: number;
+}
+
+export function setSoldierMudLevel(rig: SoldierRig, mudLevel: number): void {
+  const clamped = Math.max(0, Math.min(1, mudLevel));
+  for (let i = 0; i < rig.mudOverlays.length; i++) {
+    const m = rig.mudOverlays[i];
+    m.visible = clamped > 0.04;
+    const mat = m.material as THREE.MeshStandardMaterial;
+    mat.opacity = 0.2 + clamped * 0.72;
+  }
+}
+
+export function animateSoldierExpression(
+  rig: SoldierRig,
+  opts: {
+    blinkAmount: number; // 0 open .. 1 closed
+    mouthOpen: number; // 0 closed .. 1 open
+    browTension: number; // -1 relaxed .. +1 furrowed
+    headYaw?: number;
+    headPitch?: number;
+  },
+): void {
+  const blink = Math.max(0.05, Math.min(1, opts.blinkAmount));
+  rig.eyelidL.scale.y = blink;
+  rig.eyelidR.scale.y = blink;
+  rig.jawGroup.rotation.x = Math.max(0, Math.min(0.42, opts.mouthOpen * 0.36));
+  const tilt = Math.max(-0.25, Math.min(0.25, opts.browTension * 0.2));
+  rig.browL.rotation.z = -tilt;
+  rig.browR.rotation.z = tilt;
+  if (typeof opts.headYaw === 'number') rig.headGroup.rotation.y = opts.headYaw;
+  if (typeof opts.headPitch === 'number') rig.headGroup.rotation.x = opts.headPitch;
+}
+
+export function createLowPolySoldier(
+  team: Team,
+  role: BotRole,
+  options?: SoldierAppearanceOptions,
+): SoldierRig {
   const root = new THREE.Group();
   const bodyPivot = new THREE.Group();
   root.add(bodyPivot);
 
   const isAllies = team === 'allies';
-  const bduTex = getBduCamoTexture(team);
-  const tunicColor = isAllies ? 0x5c6e4e : 0x676b64;
-  const accentColor = isAllies ? 0x2d64b8 : 0xb83737;
-  const pantsColor = isAllies ? 0x54604b : 0x4b4f4d;
-  const helmetColor = isAllies ? 0x3b533e : 0x35393d;
-  const packColor = isAllies ? 0x7a6c4e : 0x38342e;
-  const skinColor = 0xe3b18e;
+  const bduSet = typeof document !== 'undefined' ? getBduCamoPbrSet(team) : null;
+  const gunSet = typeof document !== 'undefined' ? getGunmetalPbrSet() : null;
+  const woodSet = typeof document !== 'undefined' ? getWoodStockPbrSet() : null;
+  const polymerSet = typeof document !== 'undefined' ? getPolymerPbrSet() : null;
+  const tunicColor = options?.tunicColor ?? (isAllies ? 0xd0d8c6 : 0xd2d6d0);
+  const accentColor = isAllies ? 0x2d5ca4 : 0xa33636;
+  const pantsColor = options?.tunicColor ? options.tunicColor : isAllies ? 0xbec6b4 : 0xb2b6b2;
+  const helmetColor = options?.helmetColor ?? (isAllies ? 0x3f513d : 0x3b3e42);
+  const packColor = isAllies ? 0x6b6046 : 0x3b3832;
+  const skinColor = options?.skinColor ?? 0xdba986;
 
-  const tunicMat = makePbrMat(tunicColor, 0.86, 0.03, false, bduTex ? { map: bduTex } : {});
-  const accentMat = makePbrMat(accentColor, 0.65, 0.08);
-  const pantsMat = makePbrMat(pantsColor, 0.88, 0.03, false, bduTex ? { map: bduTex } : {});
-  const vestMat = makePbrMat(isAllies ? 0x3c4534 : 0x383b3e, 0.78, 0.09);
-  const helmetMat = makePbrMat(helmetColor, 0.42, 0.36);
-  const skinMat = makePbrMat(skinColor, 0.7, 0.02);
-  const leatherMat = makePbrMat(packColor, 0.58, 0.14);
-  const bootMat = makePbrMat(0x211a15, 0.48, 0.16);
-  const gunWoodMat = makePbrMat(0x6b4122, 0.64, 0.06);
-  const gunSteelMat = makePbrMat(0x25282c, 0.3, 0.86);
+  const tunicMat = makePbrMat(tunicColor, 0.88, 0.02, false, pbrSetProps(bduSet, 0.008));
+  const accentMat = makePbrMat(accentColor, 0.72, 0.06, false, pbrSetProps(polymerSet, 0.004, false));
+  const pantsMat = makePbrMat(pantsColor, 0.9, 0.02, false, pbrSetProps(bduSet, 0.008));
+  const vestMat = makePbrMat(
+    isAllies ? 0x454f3c : 0x3f4346,
+    0.82,
+    0.06,
+    false,
+    pbrSetProps(polymerSet, 0.009, false),
+  );
+  const helmetMat = makePbrMat(helmetColor, 0.56, 0.22, false, pbrSetProps(bduSet, 0.007, false));
+  const skinMat = makePbrMat(skinColor, 0.68, 0.02);
+  const leatherMat = makePbrMat(packColor, 0.62, 0.1, false, pbrSetProps(polymerSet, 0.006, false));
+  const bootMat = makePbrMat(0x211a15, 0.48, 0.16, false, pbrSetProps(polymerSet, 0.005, false));
+  const gunWoodMat = makePbrMat(0x734525, 0.58, 0.05, false, pbrSetProps(woodSet, 0.005));
+  const gunSteelMat = makePbrMat(0x272b30, 0.32, 0.86, false, pbrSetProps(gunSet, 0.004));
 
   const shadowCanvas = document.createElement('canvas');
   shadowCanvas.width = 64;
@@ -239,37 +260,56 @@ export function createLowPolySoldier(team: Team, role: BotRole): SoldierRig {
   shadowDisc.position.y = 0.02;
   root.add(shadowDisc);
 
-  const makeLeg = (xOff: number) => {
+  const makeLeg = (xOff: number): { legGroup: THREE.Group; kneeGroup: THREE.Group } => {
     const legGroup = new THREE.Group();
     legGroup.position.set(xOff, 0.76, 0);
 
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.115, 0.24, 4, 8), pantsMat);
-    thigh.position.y = -0.18;
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.115, 0.22, 4, 8), pantsMat);
+    thigh.position.y = -0.16;
     thigh.castShadow = true;
     legGroup.add(thigh);
 
-    const calf = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.078, 0.32, 8), pantsMat);
-    calf.position.y = -0.45;
-    calf.castShadow = true;
-    legGroup.add(calf);
+    const kneeGroup = new THREE.Group();
+    kneeGroup.position.set(0, -0.32, 0);
+    legGroup.add(kneeGroup);
 
-    const kneePad = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), leatherMat);
-    kneePad.position.set(0, -0.32, 0.045);
+    const kneePad = new THREE.Mesh(new THREE.SphereGeometry(0.088, 8, 6), leatherMat);
+    kneePad.position.set(0, 0, 0.045);
     kneePad.scale.set(1, 1, 0.65);
-    legGroup.add(kneePad);
+    kneeGroup.add(kneePad);
+
+    const calf = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.078, 0.28, 8), pantsMat);
+    calf.position.y = -0.14;
+    calf.castShadow = true;
+    kneeGroup.add(calf);
 
     const bootShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.085, 0.16, 8), bootMat);
-    bootShaft.position.set(0, -0.62, 0);
+    bootShaft.position.set(0, -0.3, 0);
     const bootToe = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.12, 4, 8), bootMat);
     bootToe.rotation.x = Math.PI / 2;
-    bootToe.position.set(0, -0.69, 0.06);
+    bootToe.position.set(0, -0.37, 0.06);
     bootToe.castShadow = true;
-    legGroup.add(bootShaft, bootToe);
+    const legMudMat = makePbrMat(0x4a3826, 0.94, 0.02, false, {
+      transparent: true,
+      opacity: 0.0,
+    });
+    const calfMud = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.088, 0.29, 8), legMudMat);
+    calfMud.position.y = -0.17;
+    calfMud.visible = false;
+    const bootMud = new THREE.Mesh(new THREE.CapsuleGeometry(0.082, 0.13, 4, 8), legMudMat);
+    bootMud.rotation.x = Math.PI / 2;
+    bootMud.position.set(0, -0.36, 0.06);
+    bootMud.visible = false;
+    kneeGroup.add(bootShaft, bootToe, calfMud, bootMud);
 
-    return legGroup;
+    return { legGroup, kneeGroup };
   };
-  const leftLeg = makeLeg(-0.14);
-  const rightLeg = makeLeg(0.14);
+  const leftLegRig = makeLeg(-0.14);
+  const rightLegRig = makeLeg(0.14);
+  const leftLeg = leftLegRig.legGroup;
+  const rightLeg = rightLegRig.legGroup;
+  const leftKnee = leftLegRig.kneeGroup;
+  const rightKnee = rightLegRig.kneeGroup;
   bodyPivot.add(leftLeg, rightLeg);
 
   const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.22, 10), tunicMat);
@@ -333,9 +373,9 @@ export function createLowPolySoldier(team: Team, role: BotRole): SoldierRig {
 
   const headGroup = new THREE.Group();
   headGroup.position.y = 1.44;
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.09, 0.1, 8), skinMat);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.09, 0.1, 12), skinMat);
   neck.position.y = 0.02;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), skinMat);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12), skinMat);
   head.position.y = 0.16;
   head.scale.set(0.92, 1.06, 0.96);
   head.castShadow = true;
@@ -356,28 +396,81 @@ export function createLowPolySoldier(team: Team, role: BotRole): SoldierRig {
         new THREE.Vector2(0.195, 0.01),
         new THREE.Vector2(0.235, -0.04),
       ];
-  const helmet = new THREE.Mesh(new THREE.LatheGeometry(helmetPts, 12), helmetMat);
+  const helmet = new THREE.Mesh(new THREE.LatheGeometry(helmetPts, 20), helmetMat);
   helmet.position.set(0, 0.17, -0.01);
   helmet.castShadow = true;
+  helmet.visible = !options?.hideHelmet;
   headGroup.add(helmet);
 
-  const band = new THREE.Mesh(new THREE.TorusGeometry(0.185, 0.018, 6, 12), accentMat);
+  // Tactical helmet shroud, brow goggles, and ballistic NVG mount
+  const nvgMount = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.055, 0.04), gunSteelMat);
+  nvgMount.position.set(0, 0.27, 0.175);
+  const goggleStrap = new THREE.Mesh(new THREE.TorusGeometry(0.188, 0.016, 8, 20), vestMat);
+  goggleStrap.rotation.x = Math.PI / 2;
+  goggleStrap.position.set(0, 0.22, -0.01);
+  const goggleFrame = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.058, 0.055), leatherMat);
+  goggleFrame.position.set(0, 0.23, 0.162);
+  const goggleLens = new THREE.Mesh(
+    new THREE.BoxGeometry(0.165, 0.04, 0.062),
+    makePbrMat(0x213647, 0.12, 0.25),
+  );
+  goggleLens.position.set(0, 0.23, 0.165);
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.186, 0.012, 8, 20), accentMat);
   band.rotation.x = Math.PI / 2;
-  band.position.set(0, 0.22, -0.01);
-  headGroup.add(band);
-
-  // Dark eyes, brow visor goggles & chinstrap
-  const eyeMat = makePbrMat(0x1b1e23, 0.4, 0.1);
-  for (const ex of [-0.052, 0.052]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 6), eyeMat);
-    eye.position.set(ex, 0.165, 0.142);
-    headGroup.add(eye);
+  band.position.set(0, 0.2, -0.01);
+  if (!options?.hideHelmet) {
+    headGroup.add(nvgMount, goggleStrap, goggleFrame, goggleLens, band);
   }
-  const chinstrap = new THREE.Mesh(new THREE.TorusGeometry(0.142, 0.01, 5, 10, Math.PI), leatherMat);
+
+  // Expressive face rig: sclera + iris, animated blinking eyelids, eyebrows, nose bridge, and hinged jaw
+  const scleraMat = makePbrMat(0xf4f1ea, 0.35, 0.04);
+  const pupilMat = makePbrMat(0x18191c, 0.2, 0.1);
+  const lidMat = makePbrMat(skinColor, 0.68, 0.02);
+  const browMat = makePbrMat(0x241c17, 0.85, 0.04);
+
+  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), scleraMat);
+  eyeL.position.set(-0.05, 0.165, 0.14);
+  const pupilL = new THREE.Mesh(new THREE.SphereGeometry(0.011, 8, 8), pupilMat);
+  pupilL.position.set(-0.05, 0.165, 0.153);
+  const eyelidL = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.036, 0.024), lidMat);
+  eyelidL.position.set(-0.05, 0.182, 0.151);
+  eyelidL.scale.y = 0.08;
+
+  const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), scleraMat);
+  eyeR.position.set(0.05, 0.165, 0.14);
+  const pupilR = new THREE.Mesh(new THREE.SphereGeometry(0.011, 8, 8), pupilMat);
+  pupilR.position.set(0.05, 0.165, 0.153);
+  const eyelidR = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.036, 0.024), lidMat);
+  eyelidR.position.set(0.05, 0.182, 0.151);
+  eyelidR.scale.y = 0.08;
+
+  const browL = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.011, 0.018), browMat);
+  browL.position.set(-0.05, 0.198, 0.151);
+  const browR = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.011, 0.018), browMat);
+  browR.position.set(0.05, 0.198, 0.151);
+
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.048, 0.035), lidMat);
+  nose.position.set(0, 0.142, 0.156);
+  nose.rotation.x = -0.18;
+
+  const jawGroup = new THREE.Group();
+  jawGroup.position.set(0, 0.095, 0.115);
+  const lowerLip = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.022, 0.045), skinMat);
+  lowerLip.position.set(0, -0.012, 0.028);
+  const mouthCavity = new THREE.Mesh(
+    new THREE.BoxGeometry(0.048, 0.012, 0.02),
+    makePbrMat(0x2a1414, 0.8, 0.02),
+  );
+  mouthCavity.position.set(0, 0.002, 0.036);
+  jawGroup.add(lowerLip, mouthCavity);
+
+  headGroup.add(eyeL, pupilL, eyelidL, eyeR, pupilR, eyelidR, browL, browR, nose, jawGroup);
+
+  const chinstrap = new THREE.Mesh(new THREE.TorusGeometry(0.142, 0.01, 6, 14, Math.PI), leatherMat);
   chinstrap.rotation.y = Math.PI / 2;
   chinstrap.rotation.x = Math.PI * 0.85;
   chinstrap.position.set(0, 0.13, 0.01);
-  headGroup.add(chinstrap);
+  if (!options?.hideHelmet) headGroup.add(chinstrap);
 
   bodyPivot.add(headGroup);
 
@@ -445,6 +538,9 @@ export function createLowPolySoldier(team: Team, role: BotRole): SoldierRig {
   gunGroup.add(telegraphGlint);
 
   weaponMount.add(gunGroup);
+  if (options?.unarmed) {
+    gunGroup.visible = false;
+  }
 
   // Build articulated two-segment arm whose hand locks directly onto its weapon grip target
   const UP_VEC = new THREE.Vector3(0, 1, 0);
@@ -517,20 +613,51 @@ export function createLowPolySoldier(team: Team, role: BotRole): SoldierRig {
   healBadge.visible = false;
   bodyPivot.add(healBadge);
 
-  return {
+  // Collect mud overlays on boots/calves and add chest mud splash
+  const chestMud = new THREE.Mesh(
+    new THREE.BoxGeometry(0.38, 0.28, 0.26),
+    makePbrMat(0x4a3826, 0.94, 0.02, false, { transparent: true, opacity: 0.0 }),
+  );
+  chestMud.position.set(0, 0.92, 0.03);
+  chestMud.visible = false;
+  bodyPivot.add(chestMud);
+
+  const mudOverlays: THREE.Mesh[] = [chestMud];
+  for (const leg of [leftKnee, rightKnee]) {
+    for (let c = 0; c < leg.children.length; c++) {
+      const ch = leg.children[c] as THREE.Mesh;
+      if (ch.material && (ch.material as THREE.MeshStandardMaterial).transparent) {
+        mudOverlays.push(ch);
+      }
+    }
+  }
+
+  const rig: SoldierRig = {
     root,
     bodyPivot,
     headGroup,
+    eyelidL,
+    eyelidR,
+    browL,
+    browR,
+    jawGroup,
     leftArm,
     rightArm,
     weaponMount,
     leftLeg,
     rightLeg,
+    leftKnee,
+    rightKnee,
     muzzleFlash,
     telegraphGlint,
     healBadge,
+    mudOverlays,
     hitFlashMaterials: [tunicMat, pantsMat, helmetMat],
   };
+  if (typeof options?.mudLevel === 'number' && options.mudLevel > 0) {
+    setSoldierMudLevel(rig, options.mudLevel);
+  }
+  return rig;
 }
 
 export interface FirstPersonWeaponRig {
@@ -569,24 +696,35 @@ export function createFirstPersonWeaponRig(
   const customMagActive = caps.supportsMagazine && loadout.magazine !== 'standard_mag';
   const customOpticActive = caps.supportsOptic && loadout.optic !== 'iron';
 
-  const woodTex = getWoodGrainTexture();
-  const steelTex = getGunmetalTexture();
-  const walnutMat = makePbrMat(0x6d3b1a, 0.52, 0.06, false, woodTex ? { map: woodTex } : {});
-  const akWoodMat = makePbrMat(0x8a451c, 0.48, 0.06, false, woodTex ? { map: woodTex } : {});
-  const darkWalnutMat = makePbrMat(0x4a2712, 0.56, 0.05, false, woodTex ? { map: woodTex } : {});
-  const bakeliteMat = makePbrMat(0x4e261a, 0.36, 0.14);
-  const polymerMat = makePbrMat(0x23201e, 0.44, 0.14);
-  const bluedSteelMat = makePbrMat(0x252c35, 0.28, 0.88, false, steelTex ? { map: steelTex } : {});
-  const parkerizedMat = makePbrMat(0x3a4249, 0.4, 0.78, false, steelTex ? { map: steelTex } : {});
-  const oliveTubeMat = makePbrMat(0x47543b, 0.56, 0.35);
-  const darkMetalMat = makePbrMat(0x14171b, 0.34, 0.85);
-  const brassMat = makePbrMat(0xc49c3c, 0.22, 0.92);
-  const warheadMat = makePbrMat(0x4a5534, 0.44, 0.42);
+  const woodSet = typeof document !== 'undefined' ? getWoodStockPbrSet() : null;
+  const steelSet = typeof document !== 'undefined' ? getGunmetalPbrSet() : null;
+  const polySet = typeof document !== 'undefined' ? getPolymerPbrSet() : null;
+  const bduSet = typeof document !== 'undefined' ? getBduCamoPbrSet('allies') : null;
+
+  const walnutMat = makePbrMat(0x7c4622, 0.5, 0.05, false, pbrSetProps(woodSet, 0.004));
+  const akWoodMat = makePbrMat(0x9a5126, 0.46, 0.05, false, pbrSetProps(woodSet, 0.004));
+  const darkWalnutMat = makePbrMat(0x553019, 0.54, 0.04, false, pbrSetProps(woodSet, 0.004));
+  const bakeliteMat = makePbrMat(0x572a1c, 0.36, 0.12, false, pbrSetProps(polySet, 0.003, false));
+  const polymerMat = makePbrMat(0x262422, 0.46, 0.12, false, pbrSetProps(polySet, 0.004));
+  const bluedSteelMat = makePbrMat(0x2d3540, 0.28, 0.88, false, pbrSetProps(steelSet, 0.003));
+  const parkerizedMat = makePbrMat(0x414a52, 0.38, 0.78, false, pbrSetProps(steelSet, 0.0035));
+  const oliveTubeMat = makePbrMat(0x4c593e, 0.54, 0.32, false, pbrSetProps(steelSet, 0.003, false));
+  const darkMetalMat = makePbrMat(0x191d22, 0.34, 0.85, false, pbrSetProps(steelSet, 0.0025));
+  const brassMat = makePbrMat(0xc8a03f, 0.24, 0.9, false, pbrSetProps(steelSet, 0.002, false));
+  const warheadMat = makePbrMat(0x4c5837, 0.46, 0.38, false, pbrSetProps(steelSet, 0.003, false));
   const lensMat = makePbrMat(0x1f4b6e, 0.06, 0.2, false, {
     emissive: 0x0b2538,
     emissiveIntensity: 0.45,
   });
-  const sleeveMat = makePbrMat(0x424d3b, 0.86, 0.03);
+  const fdeMat = makePbrMat(0x937d5f, 0.54, 0.16, false, pbrSetProps(polySet, 0.0035, false));
+  const darkFdeMat = makePbrMat(0x726046, 0.58, 0.14, false, pbrSetProps(polySet, 0.0035, false));
+  const sleeveMat = makePbrMat(
+    bduSet ? 0xd4dcc8 : 0x424d3b,
+    0.86,
+    0.02,
+    false,
+    pbrSetProps(bduSet, 0.005),
+  );
 
   let muzzleZ = -0.78;
   let muzzleY = 0.036;
@@ -648,37 +786,85 @@ export function createFirstPersonWeaponRig(
       bakeliteMat,
     );
 
-    // Stamped steel lower receiver (sharp machined rectangular silhouette)
-    const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.048, 0.26), bluedSteelMat);
-    receiver.position.set(0, 0.012, -0.035);
+    // Contoured stamped steel AK-47 receiver + rounded ribbed dust cover
+    const receiver = new THREE.Mesh(
+      createExtrudedProfile(
+        [
+          [0.095, -0.014],
+          [-0.165, -0.014],
+          [-0.165, 0.036],
+          [0.095, 0.032],
+        ],
+        0.042,
+        0.004,
+      ),
+      bluedSteelMat,
+    );
 
-    // Top stamped dust cover with stamped structural ribs
-    const dustCover = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.024, 0.22), parkerizedMat);
-    dustCover.position.set(0, 0.044, -0.025);
-    for (let i = 0; i < 3; i++) {
-      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.041, 0.004, 0.014), darkMetalMat);
-      rib.position.set(0, 0.055, 0.03 - i * 0.045);
+    const dustCoverGeo = new THREE.CylinderGeometry(
+      0.021,
+      0.022,
+      0.23,
+      12,
+      1,
+      false,
+      -Math.PI * 0.5,
+      Math.PI,
+    );
+    dustCoverGeo.rotateX(-Math.PI / 2);
+    const dustCover = new THREE.Mesh(dustCoverGeo, parkerizedMat);
+    dustCover.position.set(0, 0.031, -0.032);
+    const dustCoverFloor = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.014, 0.232), bluedSteelMat);
+    dustCoverFloor.position.set(0, 0.026, -0.032);
+    root.add(dustCoverFloor);
+    for (let i = 0; i < 4; i++) {
+      const rib = new THREE.Mesh(
+        new THREE.TorusGeometry(0.0205, 0.0022, 5, 10, Math.PI),
+        darkMetalMat,
+      );
+      rib.rotation.y = Math.PI / 2;
+      rib.position.set(0, 0.035, 0.04 - i * 0.042);
       root.add(rib);
     }
 
     // Safety selector lever on right side
-    const selector = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.012, 0.08), darkMetalMat);
+    const selector = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.012, 0.082), darkMetalMat);
     selector.position.set(0.024, 0.022, -0.01);
     selector.rotation.x = 0.08;
 
     // Animated reciprocating bolt carrier + hooked charging handle
-    const boltCarrier = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.016, 0.09), bluedSteelMat);
-    boltCarrier.position.set(0.019, 0.034, -0.085);
-    const chargeKnob = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.011, 0.016), darkMetalMat);
-    chargeKnob.position.set(0.034, 0.034, -0.065);
+    const boltCarrier = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.009, 0.009, 0.095, 8),
+      bluedSteelMat,
+    );
+    boltCarrier.rotation.x = Math.PI / 2;
+    boltCarrier.position.set(0.019, 0.033, -0.085);
+    const chargeKnob = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.01, 0.014), darkMetalMat);
+    chargeKnob.position.set(0.033, 0.034, -0.065);
     boltGroup.add(boltCarrier, chargeKnob);
 
-    // Two-piece laminated wood handguard + ventilated seam
-    const lowerHandguard = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.034, 0.205), akWoodMat);
-    lowerHandguard.position.set(0, 0.006, -0.27);
-    const upperHandguard = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.024, 0.19), akWoodMat);
+    // Sculpted palm-swell laminated wood handguard + ventilated gas port seam
+    const lowerHandguard = new THREE.Mesh(
+      createExtrudedProfile(
+        [
+          [-0.17, -0.01],
+          [-0.368, -0.004],
+          [-0.368, 0.024],
+          [-0.17, 0.024],
+        ],
+        0.04,
+        0.006,
+      ),
+      akWoodMat,
+    );
+    const upperHandguard = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.017, 0.017, 0.185, 10),
+      akWoodMat,
+    );
+    upperHandguard.rotation.x = Math.PI / 2;
     upperHandguard.position.set(0, 0.038, -0.268);
-    const handguardCap = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.052, 0.016), darkMetalMat);
+    const handguardCap = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.016, 10), darkMetalMat);
+    handguardCap.rotation.x = Math.PI / 2;
     handguardCap.position.set(0, 0.022, -0.372);
 
     // Barrel, 45° gas block & tube, steel underbarrel cleaning rod, and slant compensator
@@ -735,13 +921,25 @@ export function createFirstPersonWeaponRig(
       magGroup.add(bananaMag, magRib1, magFloor);
     }
 
+    // Receiver rivets for authentic stamped steel look
+    for (const rz of [0.055, -0.025, -0.105]) {
+      for (const sx of [-0.023, 0.023]) {
+        const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.0028, 6, 5), darkMetalMat);
+        rivet.position.set(sx, 0.02, rz);
+        root.add(rivet);
+      }
+    }
+
     // Tangent rear sight + hooded front sight post centered cleanly at y = 0.066
-    const rearSightBase = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.014, 0.048), darkMetalMat);
-    rearSightBase.position.set(0, 0.056, -0.13);
-    const rearEarL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.014, 0.016), darkMetalMat);
-    rearEarL.position.set(-0.008, 0.067, -0.12);
-    const rearEarR = rearEarL.clone();
-    rearEarR.position.x = 0.008;
+    if (!customOpticActive) {
+      const rearSightBase = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.014, 0.048), darkMetalMat);
+      rearSightBase.position.set(0, 0.056, -0.13);
+      const rearEarL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.014, 0.016), darkMetalMat);
+      rearEarL.position.set(-0.008, 0.067, -0.12);
+      const rearEarR = rearEarL.clone();
+      rearEarR.position.x = 0.008;
+      root.add(rearSightBase, rearEarL, rearEarR);
+    }
 
     const frontTower = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.032, 0.022), darkMetalMat);
     frontTower.position.set(0, 0.042, -0.73);
@@ -765,9 +963,6 @@ export function createFirstPersonWeaponRig(
       gasBlock,
       cleaningRod,
       muzzleBrake,
-      rearSightBase,
-      rearEarL,
-      rearEarR,
       frontTower,
       frontHood,
       frontPin,
@@ -777,7 +972,165 @@ export function createFirstPersonWeaponRig(
     ejectPos = new THREE.Vector3(0.032, 0.04, -0.07);
     leftHandPos = new THREE.Vector3(-0.014, -0.018, -0.28);
     rightHandPos = new THREE.Vector3(0.0, -0.052, 0.068);
-    adsOffset.set(0, -0.067, -0.32);
+    adsOffset.set(0, -0.067, -0.45);
+  } else if (weaponId === 'm4a1') {
+    // M4A1 SOPMOD Carbine (matches user reference: FDE upper/lower receiver & adjustable stock,
+    // black Picatinny quad-rail handguard, brass deflector, curved 5.56 STANAG mag, birdcage flash hider)
+    if (!customStockActive) {
+      const bufferTube = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.24, 10), darkMetalMat);
+      bufferTube.rotation.x = Math.PI / 2;
+      bufferTube.position.set(0, 0.018, 0.19);
+      const carbineStock = new THREE.Mesh(
+        createExtrudedProfile(
+          [
+            [0.14, 0.028],
+            [0.34, 0.024],
+            [0.34, -0.095],
+            [0.24, -0.088],
+            [0.14, -0.022],
+          ],
+          0.038,
+          0.004,
+        ),
+        fdeMat,
+      );
+      const buttPad = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.11, 0.012), darkMetalMat);
+      buttPad.position.set(0, -0.035, 0.346);
+      root.add(bufferTube, carbineStock, buttPad);
+    }
+
+    const pistolGrip = new THREE.Mesh(
+      createExtrudedProfile(
+        [
+          [0.018, -0.01],
+          [0.06, -0.01],
+          [0.098, -0.112],
+          [0.052, -0.115],
+        ],
+        0.032,
+        0.004,
+      ),
+      darkFdeMat,
+    );
+
+    // Forged FDE AR-15 Lower & Cylindrical Upper Receiver + Continuous Picatinny Rail
+    const lowerRecv = new THREE.Mesh(
+      createExtrudedProfile(
+        [
+          [0.072, -0.008],
+          [-0.082, -0.008],
+          [-0.145, -0.022],
+          [-0.165, 0.03],
+          [0.072, 0.03],
+        ],
+        0.04,
+        0.004,
+      ),
+      fdeMat,
+    );
+    const upperRecv = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.021, 0.215, 12), fdeMat);
+    upperRecv.rotation.x = Math.PI / 2;
+    upperRecv.position.set(0, 0.036, -0.038);
+    const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.012, 0.21), darkMetalMat);
+    topRail.position.set(0, 0.053, -0.038);
+
+    // Brass deflector & forward assist on right side (+X)
+    const deflector = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.018, 0.026), fdeMat);
+    deflector.position.set(0.024, 0.034, 0.005);
+    const forwardAssist = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.026, 8), darkMetalMat);
+    forwardAssist.rotation.x = Math.PI / 2;
+    forwardAssist.rotation.y = 0.2;
+    forwardAssist.position.set(0.024, 0.028, 0.045);
+
+    // Reciprocating bolt carrier dust cover port
+    const boltPlate = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.015, 0.075), bluedSteelMat);
+    boltPlate.position.set(0.02, 0.034, -0.065);
+    boltGroup.add(boltPlate);
+
+    // Tubular Quad-Rail Free-Float Handguard + delta ring + slotted ribs
+    const deltaRing = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.028, 0.022, 12), darkMetalMat);
+    deltaRing.rotation.x = Math.PI / 2;
+    deltaRing.position.set(0, 0.026, -0.15);
+    const handguard = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.24, 10), darkMetalMat);
+    handguard.rotation.x = Math.PI / 2;
+    handguard.position.set(0, 0.026, -0.27);
+    const handguardTopRail = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.01, 0.24), polymerMat);
+    handguardTopRail.position.set(0, 0.052, -0.27);
+    root.add(deltaRing);
+    for (let r = 0; r < 7; r++) {
+      const slot = new THREE.Mesh(new THREE.CylinderGeometry(0.0265, 0.0265, 0.01, 10), polymerMat);
+      slot.rotation.x = Math.PI / 2;
+      slot.position.set(0, 0.026, -0.172 - r * 0.033);
+      root.add(slot);
+    }
+
+    // M4A1 Barrel + Front Sight Triangle Tower + A2 Birdcage Flash Hider
+    const barrel = new THREE.Mesh(
+      createLatheBarrel([
+        [0.014, 0.0],
+        [0.012, 0.24],
+        [0.01, 0.36],
+      ]),
+      bluedSteelMat,
+    );
+    barrel.position.set(0, 0.024, -0.39);
+    const birdcage = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.012, 0.044, 10), darkMetalMat);
+    birdcage.rotation.x = Math.PI / 2;
+    birdcage.position.set(0, 0.024, -0.76);
+
+    const aFrameBase = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.03, 0.048), darkMetalMat);
+    aFrameBase.position.set(0, 0.038, -0.52);
+    const frontPin = new THREE.Mesh(new THREE.BoxGeometry(0.0035, 0.02, 0.01), darkMetalMat);
+    frontPin.position.set(0, 0.064, -0.52);
+
+    if (!customMagActive) {
+      const stanagMag = new THREE.Mesh(
+        createExtrudedProfile(
+          [
+            [-0.125, -0.006],
+            [-0.188, -0.006],
+            [-0.205, -0.16],
+            [-0.145, -0.17],
+          ],
+          0.024,
+          0.003,
+        ),
+        bluedSteelMat,
+      );
+      magGroup.add(stanagMag);
+    }
+
+    if (!customOpticActive) {
+      const rearFlip = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.016, 0.028), darkMetalMat);
+      rearFlip.position.set(0, 0.06, 0.035);
+      const earL = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.014, 0.012), darkMetalMat);
+      earL.position.set(-0.008, 0.071, 0.035);
+      const earR = earL.clone();
+      earR.position.x = 0.008;
+      root.add(rearFlip, earL, earR);
+    }
+
+    addTriggerGuard(-0.018, -0.01);
+    root.add(
+      pistolGrip,
+      lowerRecv,
+      upperRecv,
+      topRail,
+      deflector,
+      forwardAssist,
+      handguard,
+      handguardTopRail,
+      barrel,
+      birdcage,
+      aFrameBase,
+      frontPin,
+    );
+    muzzleZ = -0.79;
+    muzzleY = 0.024;
+    ejectPos = new THREE.Vector3(0.028, 0.042, -0.06);
+    leftHandPos = new THREE.Vector3(-0.014, -0.016, -0.285);
+    rightHandPos = new THREE.Vector3(0.0, -0.052, 0.065);
+    adsOffset.set(0, -0.071, -0.45);
   } else if (weaponId === 'm1_garand' || weaponId === 'kar98k' || weaponId === 'springfield') {
     const isKar = weaponId === 'kar98k';
     const isSniper = weaponId === 'springfield';
@@ -822,13 +1175,25 @@ export function createFirstPersonWeaponRig(
       root.add(forendOnly);
     }
 
-    // Top walnut handguard running forward over barrel
-    const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.022, 0.38), wood);
-    handguard.position.set(0, 0.034, -0.29);
+    // Rounded walnut handguard + contoured receiver bridge
+    const handguard = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.022, 0.38, 10), wood);
+    handguard.rotation.x = Math.PI / 2;
+    handguard.position.set(0, 0.033, -0.29);
 
-    // Machined receiver box + bridge
-    const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.038, 0.24), parkerizedMat);
-    receiver.position.set(0, 0.032, -0.06);
+    // Machined receiver + cylindrical bridge
+    const receiver = new THREE.Mesh(
+      createExtrudedProfile(
+        [
+          [0.06, 0.012],
+          [-0.18, 0.012],
+          [-0.18, 0.046],
+          [0.06, 0.042],
+        ],
+        0.042,
+        0.004,
+      ),
+      parkerizedMat,
+    );
     const receiverTop = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.021, 0.22, 10), parkerizedMat);
     receiverTop.rotation.x = Math.PI / 2;
     receiverTop.position.set(0, 0.044, -0.06);
@@ -887,6 +1252,7 @@ export function createFirstPersonWeaponRig(
       frontPost,
     );
 
+    adsOffset.set(0, -0.065, -0.45);
     if (!customOpticActive) {
       const rearBase = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.014, 0.032), darkMetalMat);
       rearBase.position.set(0, 0.055, -0.01);
@@ -895,7 +1261,6 @@ export function createFirstPersonWeaponRig(
       const earR = earL.clone();
       earR.position.x = 0.008;
       root.add(rearBase, earL, earR);
-      adsOffset.set(0, -0.065, -0.32);
     }
 
     addTriggerGuard(-0.018, 0.04);
@@ -962,20 +1327,23 @@ export function createFirstPersonWeaponRig(
     opHandle.position.set(-0.036, 0.036, -0.08);
     boltGroup.add(opHandle);
 
-    const rearEarL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.018, 0.02), darkMetalMat);
-    rearEarL.position.set(-0.009, 0.064, 0.04);
-    const rearEarR = rearEarL.clone();
-    rearEarR.position.x = 0.009;
+    if (!customOpticActive) {
+      const rearEarL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.018, 0.02), darkMetalMat);
+      rearEarL.position.set(-0.009, 0.064, 0.04);
+      const rearEarR = rearEarL.clone();
+      rearEarR.position.x = 0.009;
+      root.add(rearEarL, rearEarR);
+    }
     const frontPost = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.022, 0.012), darkMetalMat);
     frontPost.position.set(0, 0.06, -0.68);
 
     addTriggerGuard(-0.02, 0.03);
-    root.add(foregrip, receiver, barrel, gasTube, rearEarL, rearEarR, frontPost);
+    root.add(foregrip, receiver, barrel, gasTube, frontPost);
     muzzleZ = -0.78;
     muzzleY = 0.036;
     leftHandPos = new THREE.Vector3(-0.016, -0.026, -0.3);
     rightHandPos = new THREE.Vector3(0.0, -0.044, 0.095);
-    adsOffset.set(0, -0.064, -0.32);
+    adsOffset.set(0, -0.064, -0.45);
   } else if (weaponId === 'thompson') {
     if (!customStockActive) {
       const stock = new THREE.Mesh(
@@ -1039,20 +1407,23 @@ export function createFirstPersonWeaponRig(
     actuator.position.set(0, 0.058, -0.08);
     boltGroup.add(actuator);
 
-    const rearL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.016, 0.02), darkMetalMat);
-    rearL.position.set(-0.009, 0.062, 0.02);
-    const rearR = rearL.clone();
-    rearR.position.x = 0.009;
+    if (!customOpticActive) {
+      const rearL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.016, 0.02), darkMetalMat);
+      rearL.position.set(-0.009, 0.062, 0.02);
+      const rearR = rearL.clone();
+      rearR.position.x = 0.009;
+      root.add(rearL, rearR);
+    }
     const front = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.02, 0.01), darkMetalMat);
     front.position.set(0, 0.056, -0.56);
 
     addTriggerGuard(-0.015, -0.01);
-    root.add(comp, rearL, rearR, front);
+    root.add(comp, front);
     muzzleZ = -0.62;
     muzzleY = 0.032;
     leftHandPos = new THREE.Vector3(-0.014, -0.02, -0.31);
     rightHandPos = new THREE.Vector3(0.0, -0.052, 0.065);
-    adsOffset.set(0, -0.062, -0.3);
+    adsOffset.set(0, -0.062, -0.44);
   } else if (weaponId === 'mp40') {
     const receiver = new THREE.Mesh(new THREE.CylinderGeometry(0.023, 0.023, 0.36, 12), bluedSteelMat);
     receiver.rotation.x = Math.PI / 2;
@@ -1113,18 +1484,21 @@ export function createFirstPersonWeaponRig(
     const frontBlade = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.014, 0.008), darkMetalMat);
     frontBlade.position.set(0, 0.05, -0.55);
 
-    const rearL = new THREE.Mesh(new THREE.BoxGeometry(0.007, 0.012, 0.016), darkMetalMat);
-    rearL.position.set(-0.009, 0.056, 0.04);
-    const rearR = rearL.clone();
-    rearR.position.x = 0.009;
+    if (!customOpticActive) {
+      const rearL = new THREE.Mesh(new THREE.BoxGeometry(0.007, 0.012, 0.016), darkMetalMat);
+      rearL.position.set(-0.009, 0.056, 0.04);
+      const rearR = rearL.clone();
+      rearR.position.x = 0.009;
+      root.add(rearL, rearR);
+    }
 
     addTriggerGuard(-0.02, -0.02);
-    root.add(receiver, grip, lowerBody, barrel, restBar, muzzleNut, magWell, frontHood, frontBlade, rearL, rearR);
+    root.add(receiver, grip, lowerBody, barrel, restBar, muzzleNut, magWell, frontHood, frontBlade);
     muzzleZ = -0.6;
     muzzleY = 0.028;
     leftHandPos = new THREE.Vector3(-0.014, -0.055, -0.21);
     rightHandPos = new THREE.Vector3(0.0, -0.052, 0.055);
-    adsOffset.set(0, -0.056, -0.3);
+    adsOffset.set(0, -0.056, -0.44);
   } else if (weaponId === 'stg44') {
     // Authentic Sturmgewehr 44: Triangular wood stock, stamped steel angular receiver housing,
     // ventilated steel front shroud, high gas tube, forward-curving banana mag, hooded front post
@@ -1161,15 +1535,33 @@ export function createFirstPersonWeaponRig(
       bakeliteMat,
     );
 
-    // Distinct angular stamped steel StG-44 upper & lower receiver
-    const upperReceiver = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.036, 0.32), parkerizedMat);
-    upperReceiver.position.set(0, 0.034, -0.085);
-    const lowerReceiver = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.024, 0.27), darkMetalMat);
+    // Distinct angular stamped steel StG-44 upper shroud & cylindrical gas tube
+    const upperReceiver = new THREE.Mesh(
+      createExtrudedProfile(
+        [
+          [0.08, 0.018],
+          [-0.24, 0.018],
+          [-0.24, 0.052],
+          [0.08, 0.048],
+        ],
+        0.04,
+        0.004,
+      ),
+      parkerizedMat,
+    );
+    const lowerReceiver = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.022, 0.27), darkMetalMat);
     lowerReceiver.position.set(0, 0.008, -0.06);
 
-    // Ventilated stamped steel handguard shroud + side vents
-    const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.038, 0.25), darkMetalMat);
+    // Ventilated stamped steel handguard shroud (contoured cylinder + cooling ribs)
+    const handguard = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.022, 0.25, 10), darkMetalMat);
+    handguard.rotation.x = Math.PI / 2;
     handguard.position.set(0, 0.022, -0.365);
+    for (let v = 0; v < 4; v++) {
+      const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.012, 8), parkerizedMat);
+      vent.rotation.x = Math.PI / 2;
+      vent.position.set(0, 0.022, -0.27 - v * 0.055);
+      root.add(vent);
+    }
     const gasTube = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.27, 8), bluedSteelMat);
     gasTube.rotation.x = Math.PI / 2;
     gasTube.position.set(0, 0.046, -0.37);
@@ -1208,12 +1600,15 @@ export function createFirstPersonWeaponRig(
     frontHood.rotation.z = -Math.PI * 0.2;
     frontHood.position.set(0, 0.066, -0.55);
 
-    const rearBase = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.012, 0.028), darkMetalMat);
-    rearBase.position.set(0, 0.056, -0.02);
-    const rearL = new THREE.Mesh(new THREE.BoxGeometry(0.007, 0.016, 0.022), darkMetalMat);
-    rearL.position.set(-0.009, 0.066, -0.02);
-    const rearR = rearL.clone();
-    rearR.position.x = 0.009;
+    if (!customOpticActive) {
+      const rearBase = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.012, 0.028), darkMetalMat);
+      rearBase.position.set(0, 0.056, -0.02);
+      const rearL = new THREE.Mesh(new THREE.BoxGeometry(0.007, 0.016, 0.022), darkMetalMat);
+      rearL.position.set(-0.009, 0.066, -0.02);
+      const rearR = rearL.clone();
+      rearR.position.x = 0.009;
+      root.add(rearBase, rearL, rearR);
+    }
 
     addTriggerGuard(-0.018, -0.01);
     root.add(
@@ -1225,15 +1620,12 @@ export function createFirstPersonWeaponRig(
       barrel,
       frontTower,
       frontHood,
-      rearBase,
-      rearL,
-      rearR,
     );
     muzzleZ = -0.73;
     muzzleY = 0.026;
     leftHandPos = new THREE.Vector3(-0.014, -0.016, -0.32);
     rightHandPos = new THREE.Vector3(0.0, -0.052, 0.064);
-    adsOffset.set(0, -0.066, -0.31);
+    adsOffset.set(0, -0.066, -0.45);
   } else if (weaponId === 'rpg7') {
     // Authentic RPG-7 Anti-Tank Launcher: flared Venturi tailcone, laminated wood heat shield,
     // twin pistol grips, PGO-7 side optical sight, and iconic PG-7V tapered rocket warhead!
@@ -1271,29 +1663,34 @@ export function createFirstPersonWeaponRig(
     rearGrip.position.set(0, -0.05, -0.11);
     rearGrip.rotation.x = -0.1;
 
-    // PGO-7 optical sight mounted cleanly on left side so camera never clips
-    const opticMount = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.016, 0.04), darkMetalMat);
-    opticMount.position.set(-0.046, 0.038, -0.16);
-    const opticBody = new THREE.Mesh(
-      createLatheBarrel([
-        [0.02, 0.0],
-        [0.02, 0.05],
-        [0.016, 0.08],
-        [0.018, 0.16],
-      ]),
+    // Open PGO-7 side optical sight ring & sleek lower scope housing so target is 100% clear in ADS
+    const opticMount = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.014, 0.038), darkMetalMat);
+    opticMount.position.set(-0.046, 0.035, -0.16);
+    const opticRing = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.0026, 8, 18), oliveTubeMat);
+    opticRing.position.set(-0.075, 0.058, -0.15);
+    const opticRimFront = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.0024, 8, 18), darkMetalMat);
+    opticRimFront.position.set(-0.075, 0.058, -0.25);
+    const opticSleeve = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0185, 0.0185, 0.1, 14, 1, true),
       oliveTubeMat,
     );
-    opticBody.position.set(-0.075, 0.058, -0.09);
-    const opticLensF = new THREE.Mesh(new THREE.CircleGeometry(0.016, 12), lensMat);
-    opticLensF.position.set(-0.075, 0.058, -0.252);
+    opticSleeve.rotation.x = Math.PI / 2;
+    opticSleeve.position.set(-0.075, 0.058, -0.2);
+    const clearLensMat = makePbrMat(0x22688f, 0.06, 0.15, false, {
+      transparent: true,
+      opacity: 0.2,
+      depthWrite: false,
+    });
+    const opticLensF = new THREE.Mesh(new THREE.CircleGeometry(0.016, 12), clearLensMat);
+    opticLensF.position.set(-0.075, 0.058, -0.25);
     opticLensF.rotation.y = Math.PI;
-    const opticLensR = new THREE.Mesh(new THREE.CircleGeometry(0.017, 12), lensMat);
-    opticLensR.position.set(-0.075, 0.058, -0.088);
+    const opticLensR = new THREE.Mesh(new THREE.CircleGeometry(0.016, 12), clearLensMat);
+    opticLensR.position.set(-0.075, 0.058, -0.15);
 
-    const frontLeaf = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.028, 0.012), darkMetalMat);
-    frontLeaf.position.set(-0.02, 0.056, -0.66);
-    const rearLeaf = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.024, 0.012), darkMetalMat);
-    rearLeaf.position.set(-0.02, 0.056, -0.2);
+    const frontLeaf = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.022, 0.01), darkMetalMat);
+    frontLeaf.position.set(-0.02, 0.054, -0.66);
+    const rearLeaf = new THREE.Mesh(new THREE.BoxGeometry(0.007, 0.02, 0.01), darkMetalMat);
+    rearLeaf.position.set(-0.02, 0.054, -0.2);
 
     // Signature PG-7V warhead seated in muzzle (in magGroup so reload slides warhead in!)
     const boosterStem = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.02, 0.14, 10), darkMetalMat);
@@ -1322,7 +1719,9 @@ export function createFirstPersonWeaponRig(
       frontGrip,
       rearGrip,
       opticMount,
-      opticBody,
+      opticRing,
+      opticRimFront,
+      opticSleeve,
       opticLensF,
       opticLensR,
       frontLeaf,
@@ -1332,7 +1731,7 @@ export function createFirstPersonWeaponRig(
     muzzleY = 0.022;
     leftHandPos = new THREE.Vector3(0, -0.068, -0.11);
     rightHandPos = new THREE.Vector3(0, -0.072, -0.34);
-    adsOffset.set(0.075, -0.058, -0.58);
+    adsOffset.set(0.075, -0.058, -0.68);
   } else if (weaponId === 'bazooka' || weaponId === 'panzerschreck') {
     const isPanz = weaponId === 'panzerschreck';
     const tubeMat = isPanz ? parkerizedMat : oliveTubeMat;
@@ -1355,14 +1754,23 @@ export function createFirstPersonWeaponRig(
     rearGrip.position.set(0, -0.07, -0.14);
 
     if (isPanz) {
-      // Protective blast shield with armored cutout & reinforced visor frame on the sight side
-      const shieldMain = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.28, 0.014), parkerizedMat);
-      shieldMain.position.set(-0.04, 0.04, -0.34);
-      shieldMain.rotation.y = 0.06;
-      const visorGlass = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, 0.01), lensMat);
-      visorGlass.position.set(-0.125, 0.065, -0.345);
-      visorGlass.rotation.y = 0.06;
-      root.add(shieldMain, visorGlass);
+      // Protective blast shield positioned right of the sight aperture so ADS view through the visor is 100% clear
+      const shieldMain = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.27, 0.012), parkerizedMat);
+      shieldMain.position.set(0.015, 0.045, -0.34);
+      const visorBarTop = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.025, 0.012), parkerizedMat);
+      visorBarTop.position.set(-0.088, 0.125, -0.34);
+      const visorBarBot = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, 0.012), parkerizedMat);
+      visorBarBot.position.set(-0.088, -0.035, -0.34);
+      const visorBarOuter = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.25, 0.012), parkerizedMat);
+      visorBarOuter.position.set(-0.14, 0.045, -0.34);
+      const clearVisorMat = makePbrMat(0x285f7c, 0.08, 0.15, false, {
+        transparent: true,
+        opacity: 0.2,
+        depthWrite: false,
+      });
+      const visorGlass = new THREE.Mesh(new THREE.BoxGeometry(0.088, 0.105, 0.008), clearVisorMat);
+      visorGlass.position.set(-0.088, 0.06, -0.34);
+      root.add(shieldMain, visorBarTop, visorBarBot, visorBarOuter, visorGlass);
     }
 
     const rocketBody = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.22, 10), warheadMat);
@@ -1378,9 +1786,9 @@ export function createFirstPersonWeaponRig(
     rearBracket.position.set(-0.062, 0.048, -0.06);
     const frontBracket = new THREE.Mesh(new THREE.BoxGeometry(0.056, 0.01, 0.014), darkMetalMat);
     frontBracket.position.set(-0.062, 0.048, -0.68);
-    const rearSight = new THREE.Mesh(new THREE.TorusGeometry(0.015, 0.0032, 6, 14), darkMetalMat);
+    const rearSight = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.0026, 6, 16), darkMetalMat);
     rearSight.position.set(-0.088, 0.062, -0.06);
-    const frontPin = new THREE.Mesh(new THREE.BoxGeometry(0.0045, 0.022, 0.008), darkMetalMat);
+    const frontPin = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.02, 0.008), darkMetalMat);
     frontPin.position.set(-0.088, 0.058, -0.68);
 
     addTriggerGuard(-0.025, -0.14);
@@ -1399,7 +1807,7 @@ export function createFirstPersonWeaponRig(
     muzzleY = 0.02;
     leftHandPos = new THREE.Vector3(0, -0.08, -0.42);
     rightHandPos = new THREE.Vector3(0, -0.08, -0.14);
-    adsOffset.set(0.088, -0.062, -0.64);
+    adsOffset.set(0.088, -0.062, -0.7);
   } else if (weaponId === 'ppsh41') {
     // Iconic Soviet PPSh-41: Birch stock, perforated steel barrel shroud, 71-round drum magazine
     if (!customStockActive) {
@@ -1467,20 +1875,23 @@ export function createFirstPersonWeaponRig(
     chargeHandle.position.set(0.03, 0.038, -0.09);
     boltGroup.add(chargeHandle);
 
-    const rearEarL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.014, 0.018), darkMetalMat);
-    rearEarL.position.set(-0.008, 0.058, 0.01);
-    const rearEarR = rearEarL.clone();
-    rearEarR.position.x = 0.008;
+    if (!customOpticActive) {
+      const rearEarL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.014, 0.018), darkMetalMat);
+      rearEarL.position.set(-0.008, 0.058, 0.01);
+      const rearEarR = rearEarL.clone();
+      rearEarR.position.x = 0.008;
+      root.add(rearEarL, rearEarR);
+    }
     const frontPost = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.016, 0.01), darkMetalMat);
     frontPost.position.set(0, 0.058, -0.55);
 
     addTriggerGuard(-0.016, 0.04);
-    root.add(receiver, shroud, barrel, compSlant, rearEarL, rearEarR, frontPost);
+    root.add(receiver, shroud, barrel, compSlant, frontPost);
     muzzleZ = -0.6;
     muzzleY = 0.032;
     leftHandPos = new THREE.Vector3(-0.014, -0.016, -0.32);
     rightHandPos = new THREE.Vector3(0.0, -0.04, 0.11);
-    adsOffset.set(0, -0.06, -0.31);
+    adsOffset.set(0, -0.06, -0.44);
   } else if (weaponId === 'binoculars') {
     // Detailed 6x30 military field binoculars (held by both hands)
     const makeBarrelTube = (sideX: number) => {
@@ -1596,11 +2007,14 @@ export function createFirstPersonWeaponRig(
     slideTop.position.set(0, 0.034, -0.042);
     const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.0035, 0.012, 0.01), darkMetalMat);
     frontSight.position.set(0, 0.048, -0.155);
-    const rearL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.01, 0.012), darkMetalMat);
-    rearL.position.set(-0.007, 0.048, 0.065);
-    const rearR = rearL.clone();
-    rearR.position.x = 0.007;
-    boltGroup.add(slide, slideTop, frontSight, rearL, rearR);
+    boltGroup.add(slide, slideTop, frontSight);
+    if (!customOpticActive) {
+      const rearL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.01, 0.012), darkMetalMat);
+      rearL.position.set(-0.007, 0.048, 0.065);
+      const rearR = rearL.clone();
+      rearR.position.x = 0.007;
+      boltGroup.add(rearL, rearR);
+    }
 
     if (!customMagActive) {
       const magBody = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.1, 0.028), brassMat);
@@ -1623,7 +2037,7 @@ export function createFirstPersonWeaponRig(
     muzzleY = 0.026;
     ejectPos = new THREE.Vector3(0.022, 0.038, -0.04);
     rightHandPos = new THREE.Vector3(0, -0.058, 0.05);
-    adsOffset.set(0, -0.048, -0.34);
+    adsOffset.set(0, -0.048, -0.44);
   }
 
   // Mount modular 3D attachments
@@ -1827,11 +2241,23 @@ export function createVillageHouse(
   ruined = false,
 ): THREE.Group {
   const group = new THREE.Group();
-  const stoneMat = makePbrMat(0x7e776c, 0.9, 0.04, true);
-  const stuccoMat = makePbrMat(ruined ? 0xb5aba0 : 0xd6cbb8, 0.86, 0.02, true);
-  const timberMat = makePbrMat(0x4b3523, 0.78, 0.05, true);
-  const roofMat = makePbrMat(roofColor, 0.74, 0.08, true);
-  const floorMat = makePbrMat(0x665c50, 0.92, 0.03, true);
+  const rockSet = typeof document !== 'undefined' ? getRockPbrSet('forest') : null;
+  const stuccoSet = typeof document !== 'undefined' ? getStuccoPbrSet() : null;
+  const timberSet = typeof document !== 'undefined' ? getTimberPbrSet() : null;
+  const brickSet = typeof document !== 'undefined' ? getBrickPbrSet() : null;
+  const concreteSet = typeof document !== 'undefined' ? getConcretePbrSet() : null;
+
+  const stoneMat = makePbrMat(0x8c8478, 0.9, 0.04, false, pbrSetProps(rockSet, 0.02));
+  const stuccoMat = makePbrMat(
+    ruined ? 0xc0b6aa : 0xdad0be,
+    0.88,
+    0.02,
+    false,
+    pbrSetProps(stuccoSet, 0.012),
+  );
+  const timberMat = makePbrMat(0x624630, 0.8, 0.04, false, pbrSetProps(timberSet, 0.015));
+  const roofMat = makePbrMat(roofColor, 0.76, 0.06, false, pbrSetProps(brickSet, 0.018, false));
+  const floorMat = makePbrMat(0x746a5e, 0.92, 0.03, false, pbrSetProps(concreteSet, 0.012));
 
   const wallT = 0.34;
   const hw = width * 0.5;
@@ -1982,9 +2408,18 @@ export function createVillageHouse(
  */
 export function createConcreteBunker(sandTone = false): THREE.Group {
   const group = new THREE.Group();
-  const concreteMat = makePbrMat(sandTone ? 0xc2ab87 : 0x7b7e78, 0.88, 0.05, true);
-  const sandbagMat = makePbrMat(0xb8a378, 0.92, 0.02, true);
-  const steelMat = makePbrMat(0x3a4047, 0.4, 0.78, true);
+  const concreteSet = typeof document !== 'undefined' ? getConcretePbrSet() : null;
+  const stuccoSet = typeof document !== 'undefined' ? getStuccoPbrSet() : null;
+  const steelSet = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
+  const concreteMat = makePbrMat(
+    sandTone ? 0xd2be9b : 0x91948e,
+    0.88,
+    0.04,
+    false,
+    pbrSetProps(concreteSet, 0.02),
+  );
+  const sandbagMat = makePbrMat(0xbba67b, 0.94, 0.02, false, pbrSetProps(stuccoSet, 0.016));
+  const steelMat = makePbrMat(0x41474f, 0.42, 0.76, false, pbrSetProps(steelSet, 0.008));
 
   // Embedded concrete floor slab (-1.1m deep skirt)
   const floor = new THREE.Mesh(new THREE.BoxGeometry(7.2, 1.4, 5.8), concreteMat);
@@ -2049,12 +2484,13 @@ export function createConcreteBunker(sandTone = false): THREE.Group {
 
 export function createWoodenWatchtower(): THREE.Group {
   const group = new THREE.Group();
-  const woodMat = makePbrMat(0x5b4027, 0.85, 0.04, true);
-  const roofMat = makePbrMat(0x40493b, 0.8, 0.05, true);
+  const timberSet = typeof document !== 'undefined' ? getTimberPbrSet() : null;
+  const woodMat = makePbrMat(0x6a4b30, 0.84, 0.04, false, pbrSetProps(timberSet, 0.016));
+  const roofMat = makePbrMat(0x454f40, 0.82, 0.05, false, pbrSetProps(timberSet, 0.012, false));
 
   for (const px of [-1.25, 1.25]) {
     for (const pz of [-1.25, 1.25]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 6.2, 6), woodMat);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 6.2, 10), woodMat);
       post.position.set(px, 2.3, pz);
       post.castShadow = true;
       group.add(post);
@@ -2087,8 +2523,9 @@ export function createWoodenWatchtower(): THREE.Group {
 
 export function createFuelDrumCluster(): THREE.Group {
   const group = new THREE.Group();
-  const drumMat = makePbrMat(0x7c4832, 0.58, 0.45, true);
-  const oliveMat = makePbrMat(0x4f5d42, 0.62, 0.35, true);
+  const steelSet = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
+  const drumMat = makePbrMat(0x824c35, 0.56, 0.45, false, pbrSetProps(steelSet, 0.01));
+  const oliveMat = makePbrMat(0x526145, 0.6, 0.35, false, pbrSetProps(steelSet, 0.01));
   const offsets = [
     [-0.45, 0, 0.25, oliveMat],
     [0.45, 0, 0.18, drumMat],
@@ -2096,7 +2533,7 @@ export function createFuelDrumCluster(): THREE.Group {
   ] as const;
 
   offsets.forEach(([x, _y, z, mat]) => {
-    const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 1.35, 10), mat);
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 1.35, 16), mat);
     drum.position.set(x, 0.35, z);
     drum.castShadow = true;
     drum.receiveShadow = true;
@@ -2115,16 +2552,18 @@ export interface FlagpoleVisual {
 
 export function createCaptureFlagpole(label: string, radius: number): FlagpoleVisual {
   const group = new THREE.Group();
-  const plinthMat = makePbrMat(0x5d6266, 0.85, 0.08, true);
-  const poleMat = makePbrMat(0xd0d5dd, 0.35, 0.8, true);
+  const concreteSet = typeof document !== 'undefined' ? getConcretePbrSet() : null;
+  const gunSet = typeof document !== 'undefined' ? getGunmetalPbrSet() : null;
+  const plinthMat = makePbrMat(0x6d7276, 0.85, 0.08, false, pbrSetProps(concreteSet, 0.014));
+  const poleMat = makePbrMat(0xd0d5dd, 0.34, 0.82, false, pbrSetProps(gunSet, 0.004));
 
-  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.15, 1.4, 8), plinthMat);
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.15, 1.4, 14), plinthMat);
   plinth.position.y = -0.15;
   plinth.castShadow = true;
   plinth.receiveShadow = true;
   group.add(plinth);
 
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 8.6, 8), poleMat);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 8.6, 12), poleMat);
   pole.position.y = 4.55;
   pole.castShadow = true;
   group.add(pole);
@@ -2136,8 +2575,8 @@ export function createCaptureFlagpole(label: string, radius: number): FlagpoleVi
   finial.position.y = 8.95;
   group.add(finial);
 
-  const bannerMat = makePbrMat(0xd1d5db, 0.7, 0.05, true, { side: THREE.DoubleSide });
-  const banner = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.35, 6, 2), bannerMat);
+  const bannerMat = makePbrMat(0xd1d5db, 0.78, 0.04, false, { side: THREE.DoubleSide });
+  const banner = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.35, 8, 3), bannerMat);
   banner.position.set(1.3, 6.2, 0);
   banner.castShadow = true;
   group.add(banner);
@@ -2149,7 +2588,7 @@ export function createCaptureFlagpole(label: string, radius: number): FlagpoleVi
     side: THREE.DoubleSide,
     depthWrite: false,
   });
-  const ring = new THREE.Mesh(new THREE.RingGeometry(radius - 0.35, radius, 44), ringMat);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(radius - 0.35, radius, 48), ringMat);
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.06;
   group.add(ring);
@@ -2189,8 +2628,10 @@ export function createCaptureFlagpole(label: string, radius: number): FlagpoleVi
 
 export function createStoneBridge(): THREE.Group {
   const group = new THREE.Group();
-  const stoneMat = makePbrMat(0x7c766d, 0.88, 0.04, true);
-  const roadMat = makePbrMat(0x5e584f, 0.92, 0.02, true);
+  const rockSet = typeof document !== 'undefined' ? getRockPbrSet('normandy') : null;
+  const asphaltSet = typeof document !== 'undefined' ? getAsphaltPbrSet() : null;
+  const stoneMat = makePbrMat(0x888278, 0.88, 0.04, false, pbrSetProps(rockSet, 0.018));
+  const roadMat = makePbrMat(0x88888a, 0.92, 0.02, false, pbrSetProps(asphaltSet, 0.012));
 
   const deck = new THREE.Mesh(new THREE.BoxGeometry(16.5, 1.8, 8.2), roadMat);
   deck.position.y = -0.25;
@@ -2216,7 +2657,8 @@ export function createStoneBridge(): THREE.Group {
 
 export function createCzechHedgehog(): THREE.Group {
   const group = new THREE.Group();
-  const ironMat = makePbrMat(0x3b3834, 0.52, 0.65, true);
+  const steelSet = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
+  const ironMat = makePbrMat(0x3e3b36, 0.5, 0.68, false, pbrSetProps(steelSet, 0.01));
   const angles = [
     [0.65, 0, 0.45],
     [-0.65, 0, 0.45],
@@ -2234,10 +2676,11 @@ export function createCzechHedgehog(): THREE.Group {
 
 export function createSandbagBarrier(): THREE.Group {
   const group = new THREE.Group();
-  const bagMat = makePbrMat(0xb6a177, 0.9, 0.02);
+  const stuccoSet = typeof document !== 'undefined' ? getStuccoPbrSet() : null;
+  const bagMat = makePbrMat(0xbba67b, 0.92, 0.02, false, pbrSetProps(stuccoSet, 0.018));
   for (let row = 0; row < 2; row++) {
     for (let col = -1; col <= 1; col++) {
-      const bag = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.82, 4, 6), bagMat);
+      const bag = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.82, 6, 12), bagMat);
       bag.rotation.z = Math.PI / 2;
       bag.scale.set(1, 1, 1.35);
       bag.position.set(col * 1.1 + (row % 2) * 0.22, 0.08 + row * 0.36, 0);
@@ -2251,16 +2694,18 @@ export function createSandbagBarrier(): THREE.Group {
 
 export function createSupplyCrate(): THREE.Group {
   const group = new THREE.Group();
-  const crateMat = makePbrMat(0x55623c, 0.76, 0.1, true);
-  const trimMat = makePbrMat(0x363d28, 0.72, 0.16, true);
-  const brassMat = makePbrMat(0xd4af37, 0.3, 0.85, true);
+  const timberSet = typeof document !== 'undefined' ? getTimberPbrSet() : null;
+  const steelSet = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
+  const crateMat = makePbrMat(0x5b6941, 0.76, 0.1, false, pbrSetProps(timberSet, 0.014));
+  const trimMat = makePbrMat(0x3a422b, 0.7, 0.22, false, pbrSetProps(steelSet, 0.01));
+  const brassMat = makePbrMat(0xd4af37, 0.3, 0.85);
   const box = new THREE.Mesh(new THREE.BoxGeometry(1.35, 1.05, 0.95), crateMat);
   box.position.y = 0.25;
   box.castShadow = true;
   box.receiveShadow = true;
   const lid = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.12, 1.02), trimMat);
   lid.position.y = 0.82;
-  const ammoShell1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.45, 6), brassMat);
+  const ammoShell1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.45, 10), brassMat);
   ammoShell1.rotation.z = Math.PI / 2;
   ammoShell1.position.set(0, 0.93, -0.14);
   const ammoShell2 = ammoShell1.clone();
@@ -2270,10 +2715,10 @@ export function createSupplyCrate(): THREE.Group {
 }
 
 /**
- * Natural irregular faceted boulder geometry (non-boxy organic rock formations).
+ * Stratified eroded boulder geometry with UV mapping for rock albedo & bump textures.
  */
 export function createOrganicBoulderGeometry(): THREE.BufferGeometry {
-  const geo = new THREE.IcosahedronGeometry(1.18, 1);
+  const geo = new THREE.IcosahedronGeometry(1.18, 2);
   const pos = geo.attributes.position as THREE.BufferAttribute;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
@@ -2281,63 +2726,110 @@ export function createOrganicBoulderGeometry(): THREE.BufferGeometry {
     const z = pos.getZ(i);
     const noise =
       1 +
-      0.22 * Math.sin(x * 3.1 + y * 2.3) +
-      0.16 * Math.cos(z * 2.9 - x * 1.7);
-    const flatBottom = y < -0.45 ? 0.65 : 1.0;
+      0.19 * Math.sin(x * 3.1 + y * 2.3) +
+      0.14 * Math.cos(z * 2.9 - x * 1.7) +
+      0.06 * Math.sin(y * 7.2 + z * 4.1);
+    const flatBottom = y < -0.42 ? 0.62 : 1.0;
     pos.setXYZ(i, x * noise, y * noise * flatBottom, z * noise);
   }
   geo.computeVertexNormals();
   return geo;
 }
 
+function appendTransformedGeometry(
+  source: THREE.BufferGeometry,
+  positions: number[],
+  uvs: number[],
+): void {
+  const nonIdx = source.index ? source.toNonIndexed() : source;
+  const p = nonIdx.attributes.position as THREE.BufferAttribute;
+  const u = nonIdx.attributes.uv as THREE.BufferAttribute | undefined;
+  for (let i = 0; i < p.count; i++) {
+    positions.push(p.getX(i), p.getY(i), p.getZ(i));
+    if (u) {
+      uvs.push(u.getX(i), u.getY(i));
+    } else {
+      uvs.push(0.5, 0.5);
+    }
+  }
+  if (nonIdx !== source) nonIdx.dispose();
+  source.dispose();
+}
+
 /**
- * Multi-tiered evergreen pine canopy geometry (merged 3 irregular foliage tiers instead of 1 cone).
+ * Multi-tiered UV-mapped botanical pine bough cluster geometry (crossed angled branch spray planes).
  */
 export function createMultiTierPineCanopyGeometry(): THREE.BufferGeometry {
-  const tierData = [
-    { rTop: 0.4, rBot: 2.35, h: 2.1, y: 3.1 },
-    { rTop: 0.25, rBot: 1.85, h: 2.0, y: 4.4 },
-    { rTop: 0.02, rBot: 1.25, h: 1.9, y: 5.65 },
-  ];
   const positions: number[] = [];
-  for (const t of tierData) {
-    const cone = new THREE.CylinderGeometry(t.rTop, t.rBot, t.h, 7, 1);
-    cone.translate(0, t.y, 0);
-    const nonIdx = cone.toNonIndexed();
-    const p = nonIdx.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < p.count; i++) {
-      positions.push(p.getX(i), p.getY(i), p.getZ(i));
+  const uvs: number[] = [];
+  const tiers = [
+    { y: 2.55, w: 3.7, h: 2.35, tilt: 0.48, rotOff: 0.0 },
+    { y: 3.7, w: 3.1, h: 2.15, tilt: 0.44, rotOff: 0.52 },
+    { y: 4.8, w: 2.45, h: 1.95, tilt: 0.4, rotOff: 1.05 },
+    { y: 5.75, w: 1.7, h: 1.6, tilt: 0.3, rotOff: 0.35 },
+  ];
+
+  for (const tier of tiers) {
+    const blades = 5;
+    for (let b = 0; b < blades; b++) {
+      const ang = tier.rotOff + (b / blades) * Math.PI * 2;
+      const plane = new THREE.PlaneGeometry(tier.w, tier.h, 2, 2);
+      // Droop outer vertices down like gravity-laden conifer boughs
+      const pAttr = plane.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < pAttr.count; i++) {
+        const px = pAttr.getX(i);
+        const py = pAttr.getY(i);
+        const dropZ = -(Math.abs(px) / (tier.w * 0.5)) * 0.28 + (py < 0 ? 0.14 : -0.1);
+        pAttr.setZ(i, dropZ);
+      }
+      plane.rotateX(tier.tilt);
+      plane.translate(0, tier.y, 0);
+      plane.rotateY(ang);
+      appendTransformedGeometry(plane, positions, uvs);
     }
-    cone.dispose();
-    nonIdx.dispose();
   }
+
+  // Vertical crossed needle spire crown planes for full 360-deg silhouette at any pitch
+  for (let c = 0; c < 3; c++) {
+    const spire = new THREE.PlaneGeometry(3.5, 4.7, 2, 2);
+    spire.translate(0, 4.35, 0);
+    spire.rotateY((c * Math.PI) / 3);
+    appendTransformedGeometry(spire, positions, uvs);
+  }
+
   const merged = new THREE.BufferGeometry();
   merged.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  merged.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   merged.computeVertexNormals();
   return merged;
 }
 
 /**
- * Multi-frond desert date palm crown geometry.
+ * Natural arching UV-mapped desert date palm frond crown geometry.
  */
 export function createDesertPalmCanopyGeometry(): THREE.BufferGeometry {
   const positions: number[] = [];
-  for (let f = 0; f < 6; f++) {
-    const angle = (f / 6) * Math.PI * 2;
-    const frond = new THREE.ConeGeometry(0.52, 2.3, 4);
-    frond.rotateX(Math.PI * 0.62);
-    frond.translate(0, 3.7, 1.05);
-    frond.rotateY(angle);
-    const nonIdx = frond.toNonIndexed();
-    const p = nonIdx.attributes.position as THREE.BufferAttribute;
+  const uvs: number[] = [];
+  const frondCount = 9;
+  for (let f = 0; f < frondCount; f++) {
+    const angle = (f / frondCount) * Math.PI * 2 + (f % 2) * 0.12;
+    const pitchDrop = f % 2 === 0 ? 0.25 : 0.42;
+    const frond = new THREE.PlaneGeometry(1.35, 2.85, 2, 5);
+    const p = frond.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < p.count; i++) {
-      positions.push(p.getX(i), p.getY(i), p.getZ(i));
+      const lx = p.getX(i);
+      const ly = p.getY(i); // [-1.425 .. +1.425]
+      const t = (ly + 1.425) / 2.85; // 0 at stem base -> 1 at tip
+      const archY = Math.sin(t * Math.PI * 0.72) * (0.95 - pitchDrop) - t * t * (1.2 + pitchDrop);
+      const outZ = t * 2.55;
+      p.setXYZ(i, lx * (1 - t * 0.35), 4.05 + archY, 0.1 + outZ);
     }
-    frond.dispose();
-    nonIdx.dispose();
+    frond.rotateY(angle);
+    appendTransformedGeometry(frond, positions, uvs);
   }
   const merged = new THREE.BufferGeometry();
   merged.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  merged.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   merged.computeVertexNormals();
   return merged;
 }
@@ -2347,18 +2839,23 @@ export function createDesertPalmCanopyGeometry(): THREE.BufferGeometry {
  */
 export function createFoxholeVisual(radius: number): THREE.Group {
   const group = new THREE.Group();
-  const deepSoilMat = makePbrMat(0x281c12, 0.98, 0.01, true);
-  const dirtMat = makePbrMat(0x5b4a36, 0.96, 0.02, true);
-  const bagMat = makePbrMat(0xa89268, 0.92, 0.02, true);
+  const rockSet = typeof document !== 'undefined' ? getRockPbrSet('forest') : null;
+  const stuccoSet = typeof document !== 'undefined' ? getStuccoPbrSet() : null;
+  const deepSoilMat = makePbrMat(0x281c12, 0.98, 0.01, false, pbrSetProps(rockSet, 0.02, false));
+  const dirtMat = makePbrMat(0x5b4a36, 0.96, 0.02, false, pbrSetProps(rockSet, 0.022));
+  const bagMat = makePbrMat(0xb29c72, 0.92, 0.02, false, pbrSetProps(stuccoSet, 0.016));
 
   // Dark recessed soil pit disc + sloping inner crater wall
-  const pitWallGeo = new THREE.CylinderGeometry(radius * 0.88, radius * 0.56, 0.78, 12, 1, true);
-  const pitWallMat = makePbrMat(0x3a2a1c, 0.97, 0.01, true, { side: THREE.DoubleSide });
+  const pitWallGeo = new THREE.CylinderGeometry(radius * 0.88, radius * 0.56, 0.78, 18, 1, true);
+  const pitWallMat = makePbrMat(0x3a2a1c, 0.97, 0.01, false, {
+    side: THREE.DoubleSide,
+    ...pbrSetProps(rockSet, 0.02, false),
+  });
   const pitWall = new THREE.Mesh(pitWallGeo, pitWallMat);
   pitWall.position.y = -0.32;
   pitWall.receiveShadow = true;
 
-  const pitFloor = new THREE.Mesh(new THREE.CircleGeometry(radius * 0.62, 12), deepSoilMat);
+  const pitFloor = new THREE.Mesh(new THREE.CircleGeometry(radius * 0.62, 16), deepSoilMat);
   pitFloor.rotation.x = -Math.PI / 2;
   pitFloor.position.y = -0.68;
   pitFloor.receiveShadow = true;
@@ -2370,12 +2867,13 @@ export function createFoxholeVisual(radius: number): THREE.Group {
     const bx = Math.cos(a) * radius;
     const bz = Math.sin(a) * radius;
     const mound = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(0.48, 0),
+      i % 3 === 0 ? new THREE.CapsuleGeometry(0.24, 0.52, 4, 8) : new THREE.SphereGeometry(0.45, 10, 8),
       i % 3 === 0 ? bagMat : dirtMat,
     );
     mound.position.set(bx, 0.22, bz);
     mound.rotation.y = a;
-    mound.scale.set(1.3, 0.76, 1.15);
+    if (i % 3 === 0) mound.rotation.z = Math.PI / 2;
+    mound.scale.set(1.3, 0.72, 1.15);
     mound.castShadow = true;
     mound.receiveShadow = true;
     group.add(mound);
@@ -2393,10 +2891,13 @@ export function createDesertAdobeHouse(
   wallHeight: number,
 ): THREE.Group {
   const group = new THREE.Group();
-  const adobeMat = makePbrMat(0xd6b482, 0.9, 0.02, true);
-  const trimSandMat = makePbrMat(0xb9915d, 0.92, 0.02, true);
-  const cedarMat = makePbrMat(0x5c3c22, 0.82, 0.04, true);
-  const stoneFloorMat = makePbrMat(0x8e7757, 0.94, 0.02, true);
+  const stuccoSet = typeof document !== 'undefined' ? getStuccoPbrSet() : null;
+  const rockSet = typeof document !== 'undefined' ? getRockPbrSet('desert') : null;
+  const timberSet = typeof document !== 'undefined' ? getTimberPbrSet() : null;
+  const adobeMat = makePbrMat(0xdcb988, 0.9, 0.02, false, pbrSetProps(stuccoSet, 0.018));
+  const trimSandMat = makePbrMat(0xc39b66, 0.92, 0.02, false, pbrSetProps(rockSet, 0.02));
+  const cedarMat = makePbrMat(0x664428, 0.82, 0.04, false, pbrSetProps(timberSet, 0.014));
+  const stoneFloorMat = makePbrMat(0x9b8362, 0.94, 0.02, false, pbrSetProps(rockSet, 0.015));
 
   const wallT = 0.36;
   const hw = width * 0.5;
@@ -2505,10 +3006,13 @@ export function createDesertAdobeHouse(
  */
 export function createChurchBellRuin(): THREE.Group {
   const group = new THREE.Group();
-  const stoneMat = makePbrMat(0x888379, 0.92, 0.04, true);
-  const darkStoneMat = makePbrMat(0x5b574f, 0.94, 0.05, true);
-  const slateMat = makePbrMat(0x3b424c, 0.72, 0.12, true);
-  const oakMat = makePbrMat(0x4c3523, 0.82, 0.04, true);
+  const rockSet = typeof document !== 'undefined' ? getRockPbrSet('normandy') : null;
+  const timberSet = typeof document !== 'undefined' ? getTimberPbrSet() : null;
+  const steelSet = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
+  const stoneMat = makePbrMat(0x969186, 0.9, 0.04, false, pbrSetProps(rockSet, 0.02));
+  const darkStoneMat = makePbrMat(0x6d6860, 0.94, 0.05, false, pbrSetProps(rockSet, 0.02));
+  const slateMat = makePbrMat(0x464e59, 0.68, 0.14, false, pbrSetProps(steelSet, 0.01));
+  const oakMat = makePbrMat(0x5b402a, 0.82, 0.04, false, pbrSetProps(timberSet, 0.014));
 
   const w = 8.4;
   const d = 10.6;
@@ -2604,10 +3108,13 @@ export function createFactoryRuins(
   wallHeight: number,
 ): THREE.Group {
   const group = new THREE.Group();
-  const brickMat = makePbrMat(0x7c3e32, 0.9, 0.04, true);
-  const sootMat = makePbrMat(0x3c3b3d, 0.94, 0.06, true);
-  const ironMat = makePbrMat(0x2f353b, 0.48, 0.72, true);
-  const floorMat = makePbrMat(0x4a4d50, 0.92, 0.08, true);
+  const brickSet = typeof document !== 'undefined' ? getBrickPbrSet() : null;
+  const concreteSet = typeof document !== 'undefined' ? getConcretePbrSet() : null;
+  const steelSet = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
+  const brickMat = makePbrMat(0xc88a78, 0.9, 0.04, false, pbrSetProps(brickSet, 0.022));
+  const sootMat = makePbrMat(0x4e4c4f, 0.94, 0.06, false, pbrSetProps(concreteSet, 0.016));
+  const ironMat = makePbrMat(0x3a4148, 0.44, 0.74, false, pbrSetProps(steelSet, 0.01));
+  const floorMat = makePbrMat(0x5a5e62, 0.92, 0.08, false, pbrSetProps(concreteSet, 0.014));
 
   const hw = width * 0.5;
   const hd = depth * 0.5;
@@ -2688,8 +3195,15 @@ export function createFactoryRuins(
  */
 export function createWreckedVehicle(variant: 'tank' | 'tram'): THREE.Group {
   const group = new THREE.Group();
-  const rustSteelMat = makePbrMat(variant === 'tank' ? 0x5c5346 : 0x5d302c, 0.74, 0.55, true);
-  const sootMat = makePbrMat(0x282726, 0.86, 0.3, true);
+  const steelSet = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
+  const rustSteelMat = makePbrMat(
+    variant === 'tank' ? 0x62584b : 0x693733,
+    0.72,
+    0.52,
+    false,
+    pbrSetProps(steelSet, 0.014),
+  );
+  const sootMat = makePbrMat(0x2d2c2b, 0.86, 0.3, false, pbrSetProps(steelSet, 0.012, false));
 
   if (variant === 'tank') {
     const hull = new THREE.Mesh(new THREE.BoxGeometry(3.1, 1.15, 5.2), rustSteelMat);
@@ -2736,7 +3250,12 @@ export interface MilitaryJeepRig {
   muzzlePoint: THREE.Object3D;
   muzzleFlash: THREE.Object3D;
   wheels: THREE.Object3D[];
+  frontWheelPivots: [THREE.Group, THREE.Group];
+  wheelSuspensionPivots: [THREE.Group, THREE.Group, THREE.Group, THREE.Group];
+  shockStruts: [THREE.Mesh, THREE.Mesh, THREE.Mesh, THREE.Mesh];
+  steerWheel: THREE.Object3D;
   driverMesh: THREE.Group;
+  cockpitAnchor: THREE.Object3D;
 }
 
 export function createMilitaryJeep(team: Team): MilitaryJeepRig {
@@ -2745,139 +3264,334 @@ export function createMilitaryJeep(team: Team): MilitaryJeepRig {
   root.add(chassis);
 
   const isAllies = team === 'allies';
-  const paintMat = makePbrMat(isAllies ? 0x4b5d3b : 0x5d5b54, 0.65, 0.24, true);
-  const darkTrimMat = makePbrMat(0x27292c, 0.5, 0.65, true);
-  const glassMat = makePbrMat(0x3a5468, 0.15, 0.3, false, { transparent: true, opacity: 0.72 });
-  const tireMat = makePbrMat(0x1b1d1f, 0.88, 0.06, true);
-  const rimMat = makePbrMat(isAllies ? 0x3b4831 : 0x484640, 0.52, 0.45, true);
-  const seatMat = makePbrMat(0x4f3d28, 0.82, 0.05);
-  const accentMat = makePbrMat(isAllies ? 0x2563eb : 0xb91c1c, 0.55, 0.2, true);
+  const armorSet = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
+  const rubberSet = typeof document !== 'undefined' ? getRubberTreadPbrSet() : null;
+  const bduSet = typeof document !== 'undefined' ? getBduCamoPbrSet(team) : null;
+  const paintMat = makePbrMat(
+    isAllies ? 0x556845 : 0x69675f,
+    0.58,
+    0.26,
+    false,
+    pbrSetProps(armorSet, 0.01),
+  );
+  const darkTrimMat = makePbrMat(0x2a2e32, 0.44, 0.68, false, pbrSetProps(armorSet, 0.008, false));
+  const glassMat = makePbrMat(0x3a5468, 0.1, 0.32, false, { transparent: true, opacity: 0.72 });
+  const tireMat = makePbrMat(0x222528, 0.88, 0.05, false, pbrSetProps(rubberSet, 0.025));
+  const rimMat = makePbrMat(isAllies ? 0x455339 : 0x525049, 0.48, 0.48, false, pbrSetProps(armorSet, 0.008));
+  const seatMat = makePbrMat(0x56412b, 0.84, 0.04);
+  const accentMat = makePbrMat(isAllies ? 0x2563eb : 0xb91c1c, 0.52, 0.22);
+  const canvasMat = makePbrMat(
+    isAllies ? 0x7a7d64 : 0x7e7667,
+    0.9,
+    0.04,
+    false,
+    pbrSetProps(bduSet, 0.01),
+  );
 
-  // Lower hull + sloped hood + front grille + fenders
-  const lowerHull = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.68, 4.3), paintMat);
-  lowerHull.position.set(0, 0.76, 0);
-  lowerHull.castShadow = true;
-  lowerHull.receiveShadow = true;
+  // Sculpted side-profile Military Jeep tub + sloped hood + wheel-well cutouts (ExtrudeGeometry)
+  const tubGeo = createExtrudedProfile(
+    [
+      [-2.14, 0.58],
+      [-2.14, 1.38],
+      [-1.08, 1.38],
+      [-0.86, 1.46],
+      [0.42, 1.46],
+      [0.58, 1.3],
+      [2.05, 1.2],
+      [2.12, 0.74],
+      [1.82, 0.62],
+      [1.72, 0.92],
+      [1.02, 0.92],
+      [0.88, 0.58],
+      [-0.92, 0.58],
+      [-1.06, 0.92],
+      [-1.72, 0.92],
+      [-1.88, 0.58],
+    ],
+    1.98,
+    0.04,
+  );
+  const mainBody = new THREE.Mesh(tubGeo, paintMat);
+  mainBody.castShadow = true;
+  mainBody.receiveShadow = true;
+  chassis.add(mainBody);
 
-  const hood = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.48, 1.48), paintMat);
-  hood.position.set(0, 1.15, 1.38);
-  hood.rotation.x = 0.04;
-  hood.castShadow = true;
+  // Raised contoured hood cowl + engine vents
+  const hoodCowl = new THREE.Mesh(
+    createExtrudedProfile(
+      [
+        [0.54, 1.28],
+        [2.06, 1.18],
+        [2.06, 1.36],
+        [0.54, 1.48],
+      ],
+      1.36,
+      0.04,
+    ),
+    paintMat,
+  );
+  hoodCowl.castShadow = true;
+  chassis.add(hoodCowl);
 
+  // Flared trapezoid fender arches over front & rear wheels
   for (const fx of [-1.06, 1.06]) {
-    const frontFender = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.12, 1.15), paintMat);
-    frontFender.position.set(fx, 1.08, 1.38);
-    const rearFender = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.12, 1.15), paintMat);
-    rearFender.position.set(fx, 1.08, -1.32);
-    chassis.add(frontFender, rearFender);
-  }
-
-  const bumper = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.22, 0.26), darkTrimMat);
-  bumper.position.set(0, 0.6, 2.26);
-
-  const grille = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.46, 0.1), darkTrimMat);
-  grille.position.set(0, 1.12, 2.13);
-
-  for (const hx of [-0.72, 0.72]) {
-    const headlight = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.12, 0.08, 8),
-      makePbrMat(0xfef08a, 0.2, 0.1, false, { emissive: 0xfacc15, emissiveIntensity: 0.45 }),
+    const fFender = new THREE.Mesh(
+      createExtrudedProfile(
+        [
+          [0.92, 0.94],
+          [1.84, 0.94],
+          [1.68, 1.14],
+          [1.08, 1.14],
+        ],
+        0.38,
+        0.02,
+      ),
+      paintMat,
     );
-    headlight.rotation.x = Math.PI / 2;
-    headlight.position.set(hx, 1.12, 2.14);
-    chassis.add(headlight);
+    fFender.position.x = fx;
+    const rFender = new THREE.Mesh(
+      createExtrudedProfile(
+        [
+          [-1.72, 0.94],
+          [-0.92, 0.94],
+          [-1.04, 1.14],
+          [-1.62, 1.14],
+        ],
+        0.38,
+        0.02,
+      ),
+      paintMat,
+    );
+    rFender.position.x = fx;
+    chassis.add(fFender, rFender);
   }
 
-  // Windshield frame + armored side doors + roll bars + interior seats & steering column
-  const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.64, 0.07), glassMat);
-  windshield.position.set(0, 1.64, 0.56);
-  windshield.rotation.x = -0.22;
+  // Heavy steel front bull-bar bumper + tow hooks + winch drum
+  const bumper = new THREE.Mesh(new THREE.BoxGeometry(2.36, 0.18, 0.24), darkTrimMat);
+  bumper.position.set(0, 0.6, 2.24);
+  const winch = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.62, 10), darkTrimMat);
+  winch.rotation.z = Math.PI / 2;
+  winch.position.set(0, 0.68, 2.22);
 
-  for (const sx of [-1.02, 1.02]) {
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.58, 1.85), paintMat);
-    door.position.set(sx, 1.26, -0.35);
-    const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.05, 0.12), darkTrimMat);
-    pillar.position.set(sx * 0.94, 1.84, -0.95);
-    chassis.add(door, pillar);
+  // Iconic 7-slot military radiator grille + recessed headlights
+  const grilleFrame = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.44, 0.08), paintMat);
+  grilleFrame.position.set(0, 1.06, 2.1);
+  for (let s = -3; s <= 3; s++) {
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.095), darkTrimMat);
+    slot.position.set(s * 0.145, 1.06, 2.11);
+    chassis.add(slot);
+  }
+  for (const hx of [-0.72, 0.72]) {
+    const bezel = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.09, 10), darkTrimMat);
+    bezel.rotation.x = Math.PI / 2;
+    bezel.position.set(hx, 1.08, 2.1);
+    const lens = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.11, 0.11, 0.1, 10),
+      makePbrMat(0xfef08a, 0.18, 0.1, false, { emissive: 0xfacc15, emissiveIntensity: 0.55 }),
+    );
+    lens.rotation.x = Math.PI / 2;
+    lens.position.set(hx, 1.08, 2.11);
+    chassis.add(bezel, lens);
   }
 
-  // Seats & steering wheel
-  const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.58, 0.12), seatMat);
-  seatBack.position.set(-0.36, 1.32, -0.62);
-  const steerCol = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.65, 8), darkTrimMat);
+  // Framed split armored windshield + wiper arms
+  const winFrame = new THREE.Group();
+  winFrame.position.set(0, 1.72, 0.55);
+  winFrame.rotation.x = -0.24;
+  const winGlass = new THREE.Mesh(new THREE.BoxGeometry(1.86, 0.56, 0.04), glassMat);
+  const winTopBar = new THREE.Mesh(new THREE.BoxGeometry(1.96, 0.07, 0.08), darkTrimMat);
+  winTopBar.position.y = 0.29;
+  const winBotBar = winTopBar.clone();
+  winBotBar.position.y = -0.29;
+  const winMidBar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.58, 0.07), darkTrimMat);
+  winFrame.add(winGlass, winTopBar, winBotBar, winMidBar);
+  for (const sx of [-0.95, 0.95]) {
+    const sideStanchion = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.62, 0.08), darkTrimMat);
+    sideStanchion.position.x = sx;
+    winFrame.add(sideStanchion);
+  }
+  chassis.add(winFrame);
+
+  // Tubular steel roll-cage (TubeGeometry arches)
+  const cageCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.92, 1.38, -0.95),
+    new THREE.Vector3(-0.9, 2.34, -0.88),
+    new THREE.Vector3(0.9, 2.34, -0.88),
+    new THREE.Vector3(0.92, 1.38, -0.95),
+  ]);
+  const rollCage = new THREE.Mesh(new THREE.TubeGeometry(cageCurve, 14, 0.055, 8, false), darkTrimMat);
+  rollCage.castShadow = true;
+  chassis.add(rollCage);
+
+  // Bucket seats & steering column
+  for (const sx of [-0.42, 0.42]) {
+    const seatBase = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.14, 0.5), seatMat);
+    seatBase.position.set(sx, 1.08, -0.25);
+    const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.56, 0.12), seatMat);
+    seatBack.position.set(sx, 1.36, -0.52);
+    seatBack.rotation.x = -0.15;
+    chassis.add(seatBase, seatBack);
+  }
+  const steerCol = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.62, 8), darkTrimMat);
   steerCol.rotation.x = 0.62;
-  steerCol.position.set(-0.36, 1.32, 0.15);
+  steerCol.position.set(-0.42, 1.36, 0.22);
   const steerWheel = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.025, 6, 14), darkTrimMat);
   steerWheel.rotation.x = 0.62;
-  steerWheel.position.set(-0.36, 1.54, 0.02);
-  chassis.add(seatBack, steerCol, steerWheel);
+  steerWheel.position.set(-0.42, 1.56, 0.08);
+  chassis.add(steerCol, steerWheel);
+
+  // Detailed Interior Cab Dashboard, Dials, Gearshift, Rear-view Mirror & Cockpit Camera Anchor
+  const dashBody = new THREE.Mesh(new THREE.BoxGeometry(1.76, 0.34, 0.32), darkTrimMat);
+  dashBody.position.set(0, 1.36, 0.42);
+  const dashPad = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.07, 0.35), seatMat);
+  dashPad.position.set(0, 1.53, 0.42);
+  chassis.add(dashBody, dashPad);
+
+  const dialFaceMat = makePbrMat(0x162020, 0.2, 0.1, false, {
+    emissive: 0xd97706,
+    emissiveIntensity: 0.42,
+  });
+  for (const gx of [-0.54, -0.41, -0.28, -0.14]) {
+    const bezel = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.03, 12), darkTrimMat);
+    bezel.rotation.x = Math.PI / 2;
+    bezel.position.set(gx, 1.43, 0.255);
+    const dial = new THREE.Mesh(new THREE.CircleGeometry(0.04, 12), dialFaceMat);
+    dial.rotation.y = Math.PI;
+    dial.position.set(gx, 1.43, 0.238);
+    chassis.add(bezel, dial);
+  }
+  const gearStick = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.42, 8), darkTrimMat);
+  gearStick.rotation.x = -0.22;
+  gearStick.position.set(-0.08, 1.18, 0.05);
+  const gearKnob = new THREE.Mesh(new THREE.SphereGeometry(0.036, 8, 8), seatMat);
+  gearKnob.position.set(-0.08, 1.39, 0.01);
+  const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.06, 0.03), darkTrimMat);
+  mirror.position.set(0, 1.96, 0.46);
+  chassis.add(gearStick, gearKnob, mirror);
+
+  const cockpitAnchor = new THREE.Object3D();
+  cockpitAnchor.position.set(-0.42, 1.84, -0.22);
+  chassis.add(cockpitAnchor);
 
   const driverMesh = buildSeatedSoldierMesh(team, false);
-  driverMesh.position.set(-0.36, 0.96, -0.35);
+  driverMesh.position.set(-0.42, 0.98, -0.25);
   chassis.add(driverMesh);
 
-  const topRollBar = new THREE.Mesh(new THREE.BoxGeometry(2.04, 0.12, 0.14), darkTrimMat);
-  topRollBar.position.set(0, 2.36, -0.95);
-  const teamStripe = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.06, 0.55), accentMat);
+  // Rear canvas pack, spare wheel & steel jerrycan
+  const teamStripe = new THREE.Mesh(new THREE.BoxGeometry(1.38, 0.04, 0.42), accentMat);
   teamStripe.position.set(0, 1.44, 1.38);
+  const rearPack = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.44, 0.78), canvasMat);
+  rearPack.position.set(0, 1.46, -1.62);
+  const jerryCan = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.46, 0.34), makePbrMat(0x3a4a2b, 0.6, 0.35, true));
+  jerryCan.position.set(0.68, 1.15, -2.18);
+  const spareTire = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.13, 8, 14), tireMat);
+  spareTire.position.set(-0.22, 1.12, -2.22);
+  const spareHub = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.14, 10), rimMat);
+  spareHub.rotation.x = Math.PI / 2;
+  spareHub.position.set(-0.22, 1.12, -2.22);
 
-  const rearCrate = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.55, 0.95), paintMat);
-  rearCrate.position.set(0, 1.23, -1.58);
-  const spareWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.26, 12), tireMat);
-  spareWheel.rotation.x = Math.PI / 2;
-  spareWheel.position.set(0, 1.05, -2.26);
+  chassis.add(bumper, winch, grilleFrame, teamStripe, rearPack, jerryCan, spareTire, spareHub);
 
-  chassis.add(lowerHull, hood, bumper, grille, windshield, topRollBar, teamStripe, rearCrate, spareWheel);
-
-  // 4 detailed off-road wheels (tire + recessed rim + hub lugs)
+  // 4 treaded off-road wheels with steering pivots, independent suspension travel pivots & shock struts
   const wheels: THREE.Object3D[] = [];
-  for (const [wx, wz] of [
-    [-1.18, 1.38],
-    [1.18, 1.38],
-    [-1.18, -1.32],
-    [1.18, -1.32],
-  ] as const) {
-    const wheelGroup = new THREE.Group();
-    wheelGroup.position.set(wx, 0.48, wz);
+  const frontWheelPivots: [THREE.Group, THREE.Group] = [new THREE.Group(), new THREE.Group()];
+  const wheelSuspensionPivots: [THREE.Group, THREE.Group, THREE.Group, THREE.Group] = [
+    new THREE.Group(),
+    new THREE.Group(),
+    new THREE.Group(),
+    new THREE.Group(),
+  ];
+  const shockStruts: THREE.Mesh[] = [];
+  const wheelCoords: ReadonlyArray<readonly [number, number, boolean, number]> = [
+    [-1.12, 1.38, true, 0],
+    [1.12, 1.38, true, 1],
+    [-1.12, -1.36, false, 2],
+    [1.12, -1.36, false, 3],
+  ];
+  for (const [wx, wz, isFront, cornerIdx] of wheelCoords) {
+    const suspPivot = wheelSuspensionPivots[cornerIdx];
+    suspPivot.position.set(wx, 0.49, wz);
+    root.add(suspPivot);
 
-    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.34, 14), tireMat);
+    // Visible coil shock strut connecting frame rail to lower control arm
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.56, 8), darkTrimMat);
+    strut.position.set(wx * 0.78, 0.76, wz);
+    strut.rotation.z = wx < 0 ? 0.18 : -0.18;
+    root.add(strut);
+    shockStruts.push(strut);
+
+    const wheelGroup = new THREE.Group();
+    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.49, 0.49, 0.34, 16), tireMat);
     tire.rotation.z = Math.PI / 2;
     tire.castShadow = true;
-
-    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.36, 10), rimMat);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.36, 12), rimMat);
     rim.rotation.z = Math.PI / 2;
-
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.39, 8), darkTrimMat);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.39, 8), darkTrimMat);
     hub.rotation.z = Math.PI / 2;
+    // Wheel lug bolts
+    for (let b = 0; b < 5; b++) {
+      const ang = (b * Math.PI * 2) / 5;
+      const lug = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.38, 6), darkTrimMat);
+      lug.rotation.z = Math.PI / 2;
+      lug.position.set(0, Math.sin(ang) * 0.18, Math.cos(ang) * 0.18);
+      wheelGroup.add(lug);
+    }
 
     wheelGroup.add(tire, rim, hub);
-    chassis.add(wheelGroup);
+    if (isFront) {
+      const pivot = frontWheelPivots[cornerIdx];
+      pivot.add(wheelGroup);
+      suspPivot.add(pivot);
+    } else {
+      suspPivot.add(wheelGroup);
+    }
     wheels.push(wheelGroup);
   }
 
-  // Roof-mounted heavy MG turret
+  // Pintle-mounted M2 .50 cal heavy MG turret with perforated cooling jacket & ammo box
   const turret = new THREE.Group();
-  turret.position.set(0, 2.42, -0.55);
-  const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.58, 0.14, 12), darkTrimMat);
+  turret.position.set(0, 2.38, -0.68);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.05, 6, 14), darkTrimMat);
+  ring.rotation.x = Math.PI / 2;
   const gun = new THREE.Group();
-  gun.position.set(0, 0.25, 0);
-  const mgBody = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 0.85), darkTrimMat);
-  const mgBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 1.15, 8), darkTrimMat);
+  gun.position.set(0, 0.24, 0);
+  const mgBody = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.18, 0.72), darkTrimMat);
+  const ammoTin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.2, 0.24), paintMat);
+  ammoTin.position.set(-0.16, -0.02, 0.05);
+  const coolingJacket = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.52, 10), darkTrimMat);
+  coolingJacket.rotation.x = Math.PI / 2;
+  coolingJacket.position.set(0, 0.03, 0.62);
+  const mgBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.035, 0.72, 8), darkTrimMat);
   mgBarrel.rotation.x = Math.PI / 2;
-  mgBarrel.position.set(0, 0.04, 0.92);
-  const shield = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.42, 0.06), paintMat);
-  shield.position.set(0, 0.14, 0.48);
+  mgBarrel.position.set(0, 0.03, 1.15);
+  const shield = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.4, 0.05), paintMat);
+  shield.position.set(0, 0.12, 0.42);
+  shield.rotation.x = -0.15;
 
   const muzzlePoint = new THREE.Object3D();
-  muzzlePoint.position.set(0, 0.04, 1.54);
+  muzzlePoint.position.set(0, 0.03, 1.54);
   const muzzleFlash = createRealisticMuzzleFlash(1.35);
   muzzleFlash.position.copy(muzzlePoint.position);
 
-  gun.add(mgBody, mgBarrel, shield, muzzlePoint, muzzleFlash);
+  gun.add(mgBody, ammoTin, coolingJacket, mgBarrel, shield, muzzlePoint, muzzleFlash);
   turret.add(ring, gun);
   chassis.add(turret);
 
-  return { root, chassis, turret, gun, muzzlePoint, muzzleFlash, wheels, driverMesh };
+  return {
+    root,
+    chassis,
+    turret,
+    gun,
+    muzzlePoint,
+    muzzleFlash,
+    wheels,
+    frontWheelPivots,
+    wheelSuspensionPivots,
+    shockStruts: shockStruts as [THREE.Mesh, THREE.Mesh, THREE.Mesh, THREE.Mesh],
+    steerWheel,
+    driverMesh,
+    cockpitAnchor,
+  };
 }
 
 export interface BattleTankRig {
@@ -2885,10 +3599,13 @@ export interface BattleTankRig {
   hull: THREE.Group;
   turret: THREE.Group;
   gun: THREE.Group;
+  barrelGroup: THREE.Group;
   muzzlePoint: THREE.Object3D;
   muzzleFlash: THREE.Object3D;
   wheels: THREE.Object3D[];
+  roadWheelGroups: THREE.Group[];
   driverMesh: THREE.Group;
+  cockpitAnchor: THREE.Object3D;
 }
 
 export function createBattleTank(team: Team): BattleTankRig {
@@ -2897,179 +3614,415 @@ export function createBattleTank(team: Team): BattleTankRig {
   root.add(hull);
 
   const isAllies = team === 'allies';
-  const armorMat = makePbrMat(isAllies ? 0x46573b : 0x545759, 0.62, 0.38, true);
-  const darkSteelMat = makePbrMat(0x23272b, 0.48, 0.72, true);
-  const trackMat = makePbrMat(0x1b1b1d, 0.88, 0.22, true);
-  const accentMat = makePbrMat(isAllies ? 0x2563eb : 0xdc2626, 0.5, 0.2, true);
+  const armorSet = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
+  const rubberSet = typeof document !== 'undefined' ? getRubberTreadPbrSet() : null;
+  const armorMat = makePbrMat(
+    isAllies ? 0x516445 : 0x616569,
+    0.54,
+    0.42,
+    false,
+    pbrSetProps(armorSet, 0.012),
+  );
+  const darkSteelMat = makePbrMat(0x272c31, 0.42, 0.74, false, pbrSetProps(armorSet, 0.008));
+  const trackMat = makePbrMat(0x1f2124, 0.88, 0.22, false, pbrSetProps(rubberSet, 0.028));
+  const accentMat = makePbrMat(isAllies ? 0x2563eb : 0xdc2626, 0.5, 0.2);
 
-  // Heavy armored lower chassis + sloped glacis plate
-  const mainHull = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.96, 5.5), armorMat);
-  mainHull.position.set(0, 0.96, 0);
+  // Sculpted sloped-glacis armored tank hull via ExtrudeGeometry (replaces flat box!)
+  const hullProfile = createExtrudedProfile(
+    [
+      [-3.15, 0.62],
+      [-3.32, 1.05],
+      [-2.85, 1.44],
+      [1.82, 1.48],
+      [3.38, 1.04],
+      [3.12, 0.6],
+      [2.65, 0.44],
+      [-2.65, 0.44],
+    ],
+    2.78,
+    0.06,
+  );
+  const mainHull = new THREE.Mesh(hullProfile, armorMat);
   mainHull.castShadow = true;
   mainHull.receiveShadow = true;
 
-  const frontGlacis = new THREE.Mesh(new THREE.BoxGeometry(2.86, 0.62, 1.35), armorMat);
-  frontGlacis.position.set(0, 1.08, 2.75);
-  frontGlacis.rotation.x = 0.48;
-  frontGlacis.castShadow = true;
+  // Armored side sponsons overhanging tracks + rear radiator exhaust grille & tow shackles
+  const sponson = new THREE.Mesh(new THREE.BoxGeometry(3.52, 0.24, 5.85), armorMat);
+  sponson.position.set(0, 1.18, 0);
+  sponson.castShadow = true;
 
-  const engineDeck = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.22, 1.85), darkSteelMat);
-  engineDeck.position.set(0, 1.52, -1.75);
+  const engineGrille = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.08, 1.45), darkSteelMat);
+  engineGrille.position.set(0, 1.5, -1.92);
 
-  const emblem = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.08, 0.55), accentMat);
-  emblem.position.set(0, 1.48, 2.1);
+  for (const ex of [-0.75, 0.75]) {
+    const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.95, 8), darkSteelMat);
+    exhaust.rotation.x = 1.25;
+    exhaust.position.set(ex, 1.18, -3.12);
+    const spareFuel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.9, 10), armorMat);
+    spareFuel.rotation.z = Math.PI / 2;
+    spareFuel.position.set(ex * 1.45, 1.38, -2.55);
+    hull.add(exhaust, spareFuel);
+  }
 
-  hull.add(mainHull, frontGlacis, engineDeck, emblem);
+  // Driver visor periscope hood + bow machine gun + tow shackles
+  const driverHood = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.22, 0.42), darkSteelMat);
+  driverHood.position.set(-0.55, 1.42, 2.05);
+  const bowMg = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.045, 0.65, 8), darkSteelMat);
+  bowMg.rotation.x = Math.PI / 2;
+  bowMg.position.set(0.68, 1.24, 2.75);
+  const emblem = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.06, 0.55), accentMat);
+  emblem.position.set(0, 1.52, 1.45);
 
-  // Extruded continuous wrap-around caterpillar track belt + armored track skirts + 5 road wheels per side
+  hull.add(mainHull, sponson, engineGrille, driverHood, bowMg, emblem);
+
+  // Continuous wrap-around caterpillar tracks + sprockets + 6 road wheels + segmented track cleats
   const trackLoopGeo = createExtrudedProfile(
     [
-      [-2.75, 0.14],
-      [2.75, 0.14],
-      [3.12, 0.65],
-      [2.82, 1.02],
-      [-2.82, 1.02],
-      [-3.12, 0.65],
+      [-2.92, 0.1],
+      [2.92, 0.1],
+      [3.34, 0.72],
+      [2.98, 1.08],
+      [-2.98, 1.08],
+      [-3.34, 0.72],
     ],
     0.72,
     0.03,
   );
 
   const wheels: THREE.Object3D[] = [];
-  for (const sx of [-1.72, 1.72]) {
+  const roadWheelGroups: THREE.Group[] = [];
+  for (const sx of [-1.74, 1.74]) {
     const trackBelt = new THREE.Mesh(trackLoopGeo, trackMat);
     trackBelt.position.set(sx, 0, 0);
     trackBelt.castShadow = true;
     hull.add(trackBelt);
 
-    // Armored side skirt over upper track run
-    const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.34, 6.1), armorMat);
-    skirt.position.set(sx + (sx < 0 ? -0.38 : 0.38), 0.92, 0);
-    const fender = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.12, 6.15), armorMat);
-    fender.position.set(sx, 1.12, 0);
-    hull.add(skirt, fender);
+    // Armored mudguards + segmented outer side skirts
+    const fender = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.11, 6.45), armorMat);
+    fender.position.set(sx, 1.15, 0);
+    const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.42, 5.7), armorMat);
+    skirt.position.set(sx + (sx < 0 ? -0.4 : 0.4), 0.92, 0);
+    hull.add(fender, skirt);
 
+    // Visible track tread grousers along top and slanted front/rear
+    for (let g = -2.6; g <= 2.6; g += 0.52) {
+      const cleat = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.06, 0.14), darkSteelMat);
+      cleat.position.set(sx, 1.11, g);
+      hull.add(cleat);
+    }
+
+    // Drive sprocket (rear) + Idler wheel (front) + 5 heavy dual road wheels mounted on root for independent bogie travel
+    for (const endZ of [-2.95, 2.95]) {
+      const sprocket = new THREE.Group();
+      sprocket.position.set(sx, 0.74, endZ);
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.76, 12), darkSteelMat);
+      disc.rotation.z = Math.PI / 2;
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.84, 8), armorMat);
+      cap.rotation.z = Math.PI / 2;
+      sprocket.add(disc, cap);
+      hull.add(sprocket);
+      wheels.push(sprocket);
+    }
     for (let w = 0; w < 5; w++) {
-      const wz = -2.2 + w * 1.1;
+      const wz = -2.1 + w * 1.05;
+      const bogieWrap = new THREE.Group();
+      bogieWrap.position.set(sx, 0.42, wz);
       const wheelGroup = new THREE.Group();
-      wheelGroup.position.set(sx, 0.42, wz);
-      const outer = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.78, 12), darkSteelMat);
+      const outer = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.37, 0.78, 12), darkSteelMat);
       outer.rotation.z = Math.PI / 2;
-      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.82, 8), armorMat);
+      const rimRing = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.81, 10), armorMat);
+      rimRing.rotation.z = Math.PI / 2;
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.84, 8), darkSteelMat);
       hub.rotation.z = Math.PI / 2;
-      wheelGroup.add(outer, hub);
-      hull.add(wheelGroup);
+      wheelGroup.add(outer, rimRing, hub);
+      bogieWrap.add(wheelGroup);
+      root.add(bogieWrap);
       wheels.push(wheelGroup);
+      roadWheelGroups.push(bogieWrap);
     }
   }
 
-  // Rotating turret + commander cupola with visible commander + 105mm main gun with bore evacuator
+  // Cast sloped angular Battle Tank Turret (ExtrudeGeometry) + smoke dischargers + cupola + 105mm gun
   const turret = new THREE.Group();
-  turret.position.set(0, 1.62, 0.25);
+  turret.position.set(0, 1.56, 0.2);
 
-  const turretBody = new THREE.Mesh(new THREE.CylinderGeometry(1.18, 1.48, 0.88, 10), armorMat);
-  turretBody.position.y = 0.35;
+  const turretSideGeo = createExtrudedProfile(
+    [
+      [-1.55, 0.04],
+      [-1.72, 0.76],
+      [0.45, 0.84],
+      [1.35, 0.56],
+      [1.35, 0.06],
+    ],
+    2.24,
+    0.1,
+  );
+  const turretBody = new THREE.Mesh(turretSideGeo, armorMat);
   turretBody.castShadow = true;
 
-  const bustle = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.68, 1.15), armorMat);
-  bustle.position.set(0, 0.38, -1.25);
-  bustle.castShadow = true;
+  // Armored commander cupola with periscope blocks + open hatch ring + side stowage boxes
+  const cupola = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.34, 12), darkSteelMat);
+  cupola.position.set(-0.46, 0.94, -0.35);
+  const hatchLid = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.07, 10), armorMat);
+  hatchLid.position.set(-0.46, 1.24, -0.74);
+  hatchLid.rotation.x = -1.15;
 
-  const cupola = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.32, 10), darkSteelMat);
-  cupola.position.set(-0.45, 0.9, -0.32);
+  for (const sx of [-1.22, 1.22]) {
+    const stowBox = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.42, 1.15), darkSteelMat);
+    stowBox.position.set(sx, 0.44, -0.45);
+    turret.add(stowBox);
+    // Triple 66mm smoke grenade discharger cluster on cheeks
+    for (let g = 0; g < 3; g++) {
+      const smokeTube = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.3, 6), darkSteelMat);
+      smokeTube.rotation.x = 0.95;
+      smokeTube.rotation.z = sx < 0 ? 0.25 : -0.25;
+      smokeTube.position.set(sx * 0.92, 0.46 + g * 0.08, 0.65 - g * 0.14);
+      turret.add(smokeTube);
+    }
+  }
+
+  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.022, 2.2, 5), darkSteelMat);
+  antenna.position.set(0.75, 1.88, -1.2);
 
   const driverMesh = buildSeatedSoldierMesh(team, false);
-  driverMesh.position.set(-0.45, 0.68, -0.32);
+  driverMesh.position.set(-0.46, 0.72, -0.35);
   turret.add(driverMesh);
 
-  const gun = new THREE.Group();
-  gun.position.set(0, 0.4, 1.15);
+  // Interior Gunner/Commander Optics Console, Periscope Frame & Azimuth Gauges
+  const opticsHousing = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.24, 0.28), darkSteelMat);
+  opticsHousing.position.set(-0.34, 1.02, 0.44);
+  const sightGlass = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.32, 0.14),
+    makePbrMat(0x0d2820, 0.12, 0.2, false, {
+      emissive: 0x10b981,
+      emissiveIntensity: 0.55,
+      transparent: true,
+      opacity: 0.65,
+    }),
+  );
+  sightGlass.rotation.y = Math.PI;
+  sightGlass.position.set(-0.34, 1.04, 0.295);
+  const turretDial = new THREE.Mesh(
+    new THREE.CircleGeometry(0.065, 12),
+    makePbrMat(0x111827, 0.2, 0.1, false, { emissive: 0xf59e0b, emissiveIntensity: 0.45 }),
+  );
+  turretDial.rotation.y = Math.PI;
+  turretDial.position.set(0.02, 0.98, 0.34);
+  turret.add(opticsHousing, sightGlass, turretDial);
 
-  const mantlet = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.5, 0.58), darkSteelMat);
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.14, 3.65, 12), armorMat);
-  barrel.rotation.x = Math.PI / 2;
-  barrel.position.set(0, 0, 1.95);
+  const cockpitAnchor = new THREE.Object3D();
+  cockpitAnchor.position.set(-0.34, 1.18, -0.05);
+  turret.add(cockpitAnchor);
+
+  const gun = new THREE.Group();
+  gun.position.set(0, 0.44, 1.32);
+
+  const barrelGroup = new THREE.Group();
+  const mantlet = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.92, 10), darkSteelMat);
+  mantlet.rotation.z = Math.PI / 2;
+
+  const barrel = new THREE.Mesh(
+    createLatheBarrel([
+      [0.145, 0.0],
+      [0.132, 1.55],
+      [0.112, 3.65],
+    ]),
+    armorMat,
+  );
+  barrel.rotation.y = Math.PI;
+  barrel.position.set(0, 0, 0.15);
   barrel.castShadow = true;
 
-  const boreEvacuator = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.165, 0.55, 12), armorMat);
+  const boreEvacuator = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.62, 12), armorMat);
   boreEvacuator.rotation.x = Math.PI / 2;
-  boreEvacuator.position.set(0, 0, 1.75);
+  boreEvacuator.position.set(0, 0, 1.78);
 
-  const muzzleBrake = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.26, 0.42), darkSteelMat);
-  muzzleBrake.position.set(0, 0, 3.82);
+  const muzzleBrake = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.25, 0.44), darkSteelMat);
+  muzzleBrake.position.set(0, 0, 3.88);
 
   const muzzlePoint = new THREE.Object3D();
-  muzzlePoint.position.set(0, 0, 4.12);
+  muzzlePoint.position.set(0, 0, 4.18);
   const muzzleFlash = createRealisticMuzzleFlash(2.8);
   muzzleFlash.position.copy(muzzlePoint.position);
 
-  gun.add(mantlet, barrel, boreEvacuator, muzzleBrake, muzzlePoint, muzzleFlash);
-  turret.add(turretBody, bustle, cupola, gun);
+  barrelGroup.add(barrel, boreEvacuator, muzzleBrake, muzzlePoint, muzzleFlash);
+  gun.add(mantlet, barrelGroup);
+  turret.add(turretBody, cupola, hatchLid, antenna, gun);
   hull.add(turret);
 
-  return { root, hull, turret, gun, muzzlePoint, muzzleFlash, wheels, driverMesh };
+  return {
+    root,
+    hull,
+    turret,
+    gun,
+    barrelGroup,
+    muzzlePoint,
+    muzzleFlash,
+    wheels,
+    roadWheelGroups,
+    driverMesh,
+    cockpitAnchor,
+  };
 }
 
 export interface CombatAircraftRig {
   root: THREE.Group;
   airframe: THREE.Group;
   propeller: THREE.Group;
+  propDisc: THREE.Mesh;
+  aileronL: THREE.Group;
+  aileronR: THREE.Group;
+  elevator: THREE.Group;
+  rudder: THREE.Group;
+  landingGear: THREE.Group;
+  wingBombs: [THREE.Object3D, THREE.Object3D];
+  wingMissiles: [THREE.Object3D, THREE.Object3D];
   muzzleL: THREE.Object3D;
   muzzleR: THREE.Object3D;
   muzzleFlashL: THREE.Object3D;
   muzzleFlashR: THREE.Object3D;
   pilotMesh: THREE.Group;
+  cockpitAnchor: THREE.Object3D;
 }
 
-export function createCombatAircraft(team: Team): CombatAircraftRig {
+export function createCombatAircraft(
+  team: Team,
+  variant: 'fighter' | 'attacker' = 'fighter',
+): CombatAircraftRig {
   const root = new THREE.Group();
   const airframe = new THREE.Group();
   root.add(airframe);
 
   const isAllies = team === 'allies';
-  const bodyMat = makePbrMat(isAllies ? 0x56684f : 0x595e66, 0.44, 0.55, true);
-  const underMat = makePbrMat(0x9ca3af, 0.5, 0.4, true);
+  const isAttacker = variant === 'attacker';
+  const armorSet = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
+  const gunSet = typeof document !== 'undefined' ? getGunmetalPbrSet() : null;
+  const bodyMat = makePbrMat(
+    isAttacker ? (isAllies ? 0x475a42 : 0x565d65) : isAllies ? 0x5b7053 : 0x626871,
+    0.38,
+    0.6,
+    false,
+    pbrSetProps(armorSet, 0.008),
+  );
+  const underMat = makePbrMat(0xa3aab5, 0.44, 0.46, false, pbrSetProps(armorSet, 0.006));
   const canopyMat = makePbrMat(0x284d6b, 0.08, 0.3, false, { transparent: true, opacity: 0.58 });
-  const darkMetal = makePbrMat(0x1f2429, 0.4, 0.8, true);
-  const wingStripeMat = makePbrMat(isAllies ? 0x2563eb : 0xdc2626, 0.5, 0.2, true);
+  const darkMetal = makePbrMat(0x22272d, 0.36, 0.82, false, pbrSetProps(gunSet, 0.004));
+  const wingStripeMat = makePbrMat(
+    isAttacker ? (isAllies ? 0xe5940b : 0xb91c1c) : isAllies ? 0x2563eb : 0xdc2626,
+    0.46,
+    0.22,
+  );
+  const ordnanceMat = makePbrMat(0x414a37, 0.46, 0.35, false, pbrSetProps(armorSet, 0.006));
+  const missileBodyMat = makePbrMat(0xe5e7eb, 0.34, 0.42, false, pbrSetProps(gunSet, 0.003, false));
 
-  // Streamlined tapered fighter fuselage (forward along +Z)
+  // Streamlined tapered fighter fuselage + underbelly P-51 style radiator scoop
   const fuselage = new THREE.Mesh(
     createLatheBarrel([
-      [0.12, -3.9],
+      [0.12, -3.95],
       [0.44, -2.2],
       [0.62, 0.0],
-      [0.64, 1.8],
-      [0.54, 3.2],
-      [0.34, 3.85],
+      [0.64, 1.85],
+      [0.54, 3.25],
+      [0.34, 3.88],
     ]),
     bodyMat,
   );
   fuselage.rotation.y = Math.PI;
   fuselage.castShadow = true;
 
-  // Transparent canopy frame + visible pilot seated inside cockpit
-  const canopy = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 1.45, 5, 10), canopyMat);
+  const bellyScoop = new THREE.Mesh(
+    createExtrudedProfile(
+      [
+        [-1.35, -0.45],
+        [0.45, -0.42],
+        [0.32, -0.82],
+        [-1.15, -0.78],
+      ],
+      0.56,
+      0.04,
+    ),
+    underMat,
+  );
+  const scoopIntake = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.28, 0.08), darkMetal);
+  scoopIntake.position.set(0, -0.62, 0.4);
+  airframe.add(bellyScoop, scoopIntake);
+
+  // Exhaust manifold stubs along nose cowling
+  for (const sx of [-0.52, 0.52]) {
+    for (let e = 0; e < 4; e++) {
+      const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.04, 0.18, 6), darkMetal);
+      stub.rotation.z = sx < 0 ? -0.8 : 0.8;
+      stub.position.set(sx, 0.06, 2.25 + e * 0.24);
+      airframe.add(stub);
+    }
+  }
+
+  // Framed bubble canopy with structural ribs + visible pilot seated inside cockpit
+  const canopy = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 1.48, 6, 12), canopyMat);
   canopy.rotation.x = Math.PI / 2;
-  canopy.position.set(0, 0.56, 0.35);
+  canopy.position.set(0, 0.56, 0.32);
+  for (const cz of [-0.35, 0.25, 0.82]) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.025, 6, 12, Math.PI), darkMetal);
+    rib.position.set(0, 0.52, cz);
+    airframe.add(rib);
+  }
 
   const pilotMesh = buildSeatedSoldierMesh(team, true);
-  pilotMesh.position.set(0, 0.22, 0.35);
+  pilotMesh.position.set(0, 0.22, 0.32);
   airframe.add(pilotMesh);
 
-  // Swept tapered extruded main wings (left & right swept back smoothly from root to wingtip)
+  // Detailed Fighter Cockpit Instrument Panel, Control Stick, Reflector Gunsight & Interior Camera Anchor
+  const acPanel = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.24, 0.18), darkMetal);
+  acPanel.position.set(0, 0.56, 0.88);
+  airframe.add(acPanel);
+  const acDialMat = makePbrMat(0x0f172a, 0.18, 0.1, false, {
+    emissive: 0x38bdf8,
+    emissiveIntensity: 0.45,
+  });
+  for (const [gx, gy] of [
+    [-0.16, 0.6],
+    [0, 0.61],
+    [0.16, 0.6],
+    [-0.09, 0.51],
+    [0.09, 0.51],
+  ]) {
+    const dial = new THREE.Mesh(new THREE.CircleGeometry(0.042, 10), acDialMat);
+    dial.rotation.y = Math.PI;
+    dial.position.set(gx, gy, 0.785);
+    airframe.add(dial);
+  }
+  const reflectorGlass = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.16, 0.14),
+    makePbrMat(0x34d399, 0.08, 0.2, false, {
+      transparent: true,
+      opacity: 0.35,
+      emissive: 0x10b981,
+      emissiveIntensity: 0.4,
+    }),
+  );
+  reflectorGlass.position.set(0, 0.74, 0.9);
+  reflectorGlass.rotation.x = -0.35;
+  const controlStick = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.025, 0.32, 8), darkMetal);
+  controlStick.position.set(0, 0.4, 0.62);
+  airframe.add(reflectorGlass, controlStick);
+
+  const cockpitAnchor = new THREE.Object3D();
+  cockpitAnchor.position.set(0, 0.84, 0.26);
+  airframe.add(cockpitAnchor);
+
+  // Swept tapered extruded main wings + aerodynamic wingroot fillets + wingtip nav lights
   const buildSweptWing = (side: -1 | 1) => {
     const s = new THREE.Shape();
-    s.moveTo(0, 1.65);
-    s.lineTo(side * 5.65, 0.35);
-    s.lineTo(side * 5.65, -0.65);
-    s.lineTo(0, -0.75);
+    s.moveTo(0, 1.68);
+    s.lineTo(side * 5.75, 0.35);
+    s.lineTo(side * 5.75, -0.65);
+    s.lineTo(0, -0.78);
     s.closePath();
     const g = new THREE.ExtrudeGeometry(s, {
       depth: 0.16,
       bevelEnabled: true,
-      bevelThickness: 0.02,
-      bevelSize: 0.02,
+      bevelThickness: 0.025,
+      bevelSize: 0.025,
       bevelSegments: 2,
     });
     g.rotateX(-Math.PI / 2);
@@ -3083,6 +4036,32 @@ export function createCombatAircraft(team: Team): CombatAircraftRig {
   rightWing.position.set(0.35, -0.1, 0.45);
   rightWing.castShadow = true;
 
+  // Red/Green wingtip navigation lights + countermeasure flare dispenser pods
+  const navL = new THREE.Mesh(
+    new THREE.SphereGeometry(0.08, 6, 5),
+    makePbrMat(0xef4444, 0.2, 0.1, false, { emissive: 0xef4444, emissiveIntensity: 0.7 }),
+  );
+  navL.position.set(6.05, -0.02, 0.35);
+  const navR = new THREE.Mesh(
+    new THREE.SphereGeometry(0.08, 6, 5),
+    makePbrMat(0x22c55e, 0.2, 0.1, false, { emissive: 0x22c55e, emissiveIntensity: 0.7 }),
+  );
+  navR.position.set(-6.05, -0.02, 0.35);
+  airframe.add(navL, navR);
+
+  // Animated Wing Ailerons (Left +X / Right -X when viewed along +Z)
+  const aileronL = new THREE.Group();
+  aileronL.position.set(3.8, -0.05, -0.2);
+  const ailMeshL = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.1, 0.38), wingStripeMat);
+  ailMeshL.position.set(0, 0, -0.15);
+  aileronL.add(ailMeshL);
+
+  const aileronR = new THREE.Group();
+  aileronR.position.set(-3.8, -0.05, -0.2);
+  const ailMeshR = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.1, 0.38), wingStripeMat);
+  ailMeshR.position.set(0, 0, -0.15);
+  aileronR.add(ailMeshR);
+
   for (const wx of [-4.1, 4.1]) {
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.2, 1.15), wingStripeMat);
     stripe.position.set(wx, -0.02, 0.4);
@@ -3092,35 +4071,112 @@ export function createCombatAircraft(team: Team): CombatAircraftRig {
     const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 1.25, 8), darkMetal);
     cannon.rotation.x = Math.PI / 2;
     cannon.position.set(wx * 0.58, -0.08, 1.42);
-    airframe.add(stripe, pod, cannon);
+    const flarePod = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.62), darkMetal);
+    flarePod.position.set(wx * 0.35, -0.24, -0.55);
+    airframe.add(stripe, pod, cannon, flarePod);
+    if (isAttacker) {
+      const twinNacelle = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.28, 0.34, 1.75, 10),
+        bodyMat,
+      );
+      twinNacelle.rotation.x = Math.PI / 2;
+      twinNacelle.position.set(wx * 0.48, -0.14, 1.05);
+      const podIntake = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.16, 10), darkMetal);
+      podIntake.rotation.x = Math.PI / 2;
+      podIntake.position.set(wx * 0.48, -0.14, 1.94);
+      airframe.add(twinNacelle, podIntake);
+    }
   }
 
-  // Landing skids under wings & nose for airfield parking
+  // Underwing Air-to-Ground Bombs + Heat-Seeking IR Missiles
+  const buildUnderwingBomb = (bx: number) => {
+    const bGrp = new THREE.Group();
+    bGrp.position.set(bx, -0.45, 0.35);
+    const bBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.85, 4, 8), ordnanceMat);
+    bBody.rotation.x = Math.PI / 2;
+    const bFin = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.18), wingStripeMat);
+    bFin.position.z = -0.46;
+    bGrp.add(bBody, bFin);
+    airframe.add(bGrp);
+    return bGrp;
+  };
+  const wingBombs: [THREE.Object3D, THREE.Object3D] = [
+    buildUnderwingBomb(-1.85),
+    buildUnderwingBomb(1.85),
+  ];
+
+  const buildUnderwingMissile = (mx: number) => {
+    const mGrp = new THREE.Group();
+    mGrp.position.set(mx, -0.34, 0.55);
+    const mTube = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 1.55, 8), missileBodyMat);
+    mTube.rotation.x = Math.PI / 2;
+    const mNose = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.24, 8), darkMetal);
+    mNose.rotation.x = Math.PI / 2;
+    mNose.position.z = 0.88;
+    const mFins = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.32, 0.14), wingStripeMat);
+    mFins.position.z = -0.62;
+    mGrp.add(mTube, mNose, mFins);
+    airframe.add(mGrp);
+    return mGrp;
+  };
+  const wingMissiles: [THREE.Object3D, THREE.Object3D] = [
+    buildUnderwingMissile(-3.1),
+    buildUnderwingMissile(3.1),
+  ];
+
+  // Retractable landing gear assembly
+  const landingGear = new THREE.Group();
+  landingGear.position.set(0, -0.18, 0.85);
   for (const gx of [-1.45, 1.45]) {
     const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.72, 6), darkMetal);
-    strut.position.set(gx, -0.52, 0.85);
+    strut.position.set(gx, -0.34, 0);
     const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.16, 10), darkMetal);
     wheel.rotation.z = Math.PI / 2;
-    wheel.position.set(gx, -0.88, 0.85);
-    airframe.add(strut, wheel);
+    wheel.position.set(gx, -0.7, 0);
+    landingGear.add(strut, wheel);
   }
+  airframe.add(landingGear);
 
-  // Swept horizontal tailplane & vertical rudder fin
+  // Swept horizontal tailplane + animated elevator & tapered vertical stabilizer
   const tailWing = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.12, 0.95), underMat);
   tailWing.position.set(0, 0.1, -3.25);
-  const rudder = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.45, 1.25), wingStripeMat);
-  rudder.position.set(0, 0.72, -3.25);
-  rudder.rotation.x = -0.24;
 
-  // Spinning nose spinner + 3 propeller blades
+  const elevator = new THREE.Group();
+  elevator.position.set(0, 0.1, -3.72);
+  const elevMesh = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.08, 0.36), wingStripeMat);
+  elevMesh.position.z = -0.15;
+  elevator.add(elevMesh);
+
+  const tailFin = new THREE.Mesh(
+    createExtrudedProfile(
+      [
+        [-2.75, 0.1],
+        [-3.62, 0.1],
+        [-3.52, 1.48],
+        [-3.08, 1.48],
+      ],
+      0.13,
+      0.02,
+    ),
+    bodyMat,
+  );
+
+  const rudder = new THREE.Group();
+  rudder.position.set(0, 0.72, -3.6);
+  const rudderFlap = new THREE.Mesh(new THREE.BoxGeometry(0.11, 1.32, 0.44), wingStripeMat);
+  rudderFlap.position.z = -0.2;
+  rudderFlap.rotation.x = -0.12;
+  rudder.add(rudderFlap);
+
+  // Spinning nose spinner, 3 tapered propeller blades + translucent high-RPM blur disc
   const propeller = new THREE.Group();
-  propeller.position.set(0, 0, 3.92);
-  const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.68, 10), wingStripeMat);
+  propeller.position.set(0, 0, 3.94);
+  const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.7, 12), wingStripeMat);
   spinner.rotation.x = Math.PI / 2;
   spinner.position.z = 0.25;
   propeller.add(spinner);
   for (let b = 0; b < 3; b++) {
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.38, 0.05), darkMetal);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.38, 0.045), darkMetal);
     blade.rotation.z = (b * Math.PI * 2) / 3;
     blade.position.set(
       Math.cos((b * Math.PI * 2) / 3 + Math.PI / 2) * 0.68,
@@ -3129,6 +4185,18 @@ export function createCombatAircraft(team: Team): CombatAircraftRig {
     );
     propeller.add(blade);
   }
+  const propDisc = new THREE.Mesh(
+    new THREE.CircleGeometry(1.36, 20),
+    new THREE.MeshBasicMaterial({
+      color: 0xd1d5db,
+      transparent: true,
+      opacity: 0.22,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
+  );
+  propDisc.position.z = 3.94;
+  propDisc.visible = false;
 
   const muzzleL = new THREE.Object3D();
   muzzleL.position.set(-2.38, -0.08, 2.1);
@@ -3145,9 +4213,14 @@ export function createCombatAircraft(team: Team): CombatAircraftRig {
     canopy,
     leftWing,
     rightWing,
+    aileronL,
+    aileronR,
     tailWing,
+    elevator,
+    tailFin,
     rudder,
     propeller,
+    propDisc,
     muzzleL,
     muzzleR,
     muzzleFlashL,
@@ -3157,12 +4230,294 @@ export function createCombatAircraft(team: Team): CombatAircraftRig {
     root,
     airframe,
     propeller,
+    propDisc,
+    aileronL,
+    aileronR,
+    elevator,
+    rudder,
+    landingGear,
+    wingBombs,
+    wingMissiles,
     muzzleL,
     muzzleR,
     muzzleFlashL,
     muzzleFlashR,
     pilotMesh,
+    cockpitAnchor,
   };
+}
+
+export interface CombatHelicopterRig {
+  root: THREE.Group;
+  airframe: THREE.Group;
+  mainRotor: THREE.Group;
+  mainRotorDisc: THREE.Mesh;
+  tailRotor: THREE.Group;
+  gunTurret: THREE.Group;
+  muzzlePoint: THREE.Object3D;
+  muzzleFlash: THREE.Object3D;
+  pilotMesh: THREE.Group;
+  cockpitAnchor: THREE.Object3D;
+}
+
+/**
+ * Builds a sleek, contoured attack/utility Combat Helicopter with sculpted nose,
+ * twin turbines, greenhouse cockpit interior + instrument gauges, articulated 4-blade
+ * main rotor, tail boom + tail rotor, landing skids, winglet rocket pods, and chin 20mm autocannon.
+ */
+export function createCombatHelicopter(team: Team): CombatHelicopterRig {
+  const root = new THREE.Group();
+  const airframe = new THREE.Group();
+  root.add(airframe);
+
+  const isAllies = team === 'allies';
+  const armorSet = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
+  const gunSet = typeof document !== 'undefined' ? getGunmetalPbrSet() : null;
+
+  const hullMat = makePbrMat(
+    isAllies ? 0x4b5941 : 0x515860,
+    0.46,
+    0.42,
+    false,
+    pbrSetProps(armorSet, 0.01),
+  );
+  const darkMetal = makePbrMat(0x202429, 0.38, 0.78, false, pbrSetProps(gunSet, 0.005));
+  const canopyMat = makePbrMat(0x254863, 0.08, 0.28, false, { transparent: true, opacity: 0.45 });
+  const accentMat = makePbrMat(isAllies ? 0x2563eb : 0xdc2626, 0.48, 0.22);
+
+  // Sculpted streamlined attack fuselage via ExtrudeGeometry (no boxy cubes!)
+  const fuselageGeo = createExtrudedProfile(
+    [
+      [-1.95, 0.15],
+      [-1.75, 1.38],
+      [-0.45, 1.72],
+      [0.85, 1.56],
+      [2.65, 0.72],
+      [3.35, 0.34],
+      [3.12, -0.02],
+      [1.8, -0.18],
+      [-1.55, -0.14],
+    ],
+    1.56,
+    0.12,
+  );
+  const fuselage = new THREE.Mesh(fuselageGeo, hullMat);
+  fuselage.castShadow = true;
+  fuselage.receiveShadow = true;
+  airframe.add(fuselage);
+
+  // Twin upper turbine engine nacelles & angled intakes
+  for (const tx of [-0.52, 0.52]) {
+    const nacelle = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.28, 1.75, 5, 10),
+      hullMat,
+    );
+    nacelle.rotation.x = Math.PI / 2;
+    nacelle.position.set(tx, 1.62, -0.45);
+    nacelle.castShadow = true;
+    const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.48, 10), darkMetal);
+    exhaust.rotation.x = Math.PI / 2 - 0.12;
+    exhaust.position.set(tx, 1.58, -1.52);
+    airframe.add(nacelle, exhaust);
+  }
+
+  // Tapered tail boom + horizontal stabilizers + swept vertical tail fin
+  const tailBoom = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.38, 4.9, 10), hullMat);
+  tailBoom.rotation.x = Math.PI / 2;
+  tailBoom.position.set(0, 0.96, -4.15);
+  tailBoom.castShadow = true;
+  const tailFin = new THREE.Mesh(
+    createExtrudedProfile(
+      [
+        [-5.75, 0.92],
+        [-6.65, 0.92],
+        [-7.12, 2.35],
+        [-6.35, 2.35],
+      ],
+      0.16,
+      0.02,
+    ),
+    hullMat,
+  );
+  const tailStab = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.1, 0.54), accentMat);
+  tailStab.position.set(0, 0.98, -5.85);
+  airframe.add(tailBoom, tailFin, tailStab);
+
+  // Stub weapon winglets + 7-tube Hydra rocket pods & AGM pylons
+  for (const wx of [-1.75, 1.75]) {
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.14, 0.95), hullMat);
+    wing.position.set(wx * 0.72, 0.55, 0.22);
+    wing.rotation.z = wx < 0 ? 0.08 : -0.08;
+    const rocketPod = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.48, 12), darkMetal);
+    rocketPod.rotation.x = Math.PI / 2;
+    rocketPod.position.set(wx * 0.96, 0.34, 0.38);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.2, 12), accentMat);
+    band.rotation.x = Math.PI / 2;
+    band.position.set(wx * 0.96, 0.34, 0.82);
+    airframe.add(wing, rocketPod, band);
+  }
+
+  // Tubular steel landing skids
+  for (const sx of [-1.05, 1.05]) {
+    const skid = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 4.3, 8), darkMetal);
+    skid.rotation.x = Math.PI / 2;
+    skid.position.set(sx, -0.78, 0.45);
+    const strutF = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.9, 6), darkMetal);
+    strutF.rotation.z = sx < 0 ? 0.24 : -0.24;
+    strutF.position.set(sx * 0.85, -0.4, 1.35);
+    const strutR = strutF.clone();
+    strutR.position.z = -0.65;
+    airframe.add(skid, strutF, strutR);
+  }
+
+  // Armored Glass Cockpit Greenhouse + Full Interior Console + Cockpit Anchor
+  const canopyShell = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.82, 2.05), canopyMat);
+  canopyShell.position.set(0, 1.12, 1.62);
+  canopyShell.rotation.x = 0.22;
+  airframe.add(canopyShell);
+  for (const fx of [-0.6, 0.6]) {
+    const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.88, 0.08), darkMetal);
+    pillar.position.set(fx, 1.1, 2.52);
+    pillar.rotation.x = 0.42;
+    airframe.add(pillar);
+  }
+
+  const heliDash = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.34, 0.42), darkMetal);
+  heliDash.position.set(0, 0.78, 2.48);
+  airframe.add(heliDash);
+  const mfdMat = makePbrMat(0x0b1f18, 0.14, 0.1, false, {
+    emissive: 0x22c55e,
+    emissiveIntensity: 0.5,
+  });
+  for (const mx of [-0.24, 0.24]) {
+    const mfd = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.18), mfdMat);
+    mfd.rotation.y = Math.PI;
+    mfd.position.set(mx, 0.84, 2.265);
+    airframe.add(mfd);
+  }
+  const cyclic = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.028, 0.42, 8), darkMetal);
+  cyclic.position.set(0, 0.64, 2.05);
+  airframe.add(cyclic);
+
+  const pilotMesh = buildSeatedSoldierMesh(team, true);
+  pilotMesh.position.set(0, 0.52, 1.55);
+  airframe.add(pilotMesh);
+
+  const cockpitAnchor = new THREE.Object3D();
+  cockpitAnchor.position.set(0, 1.24, 1.72);
+  airframe.add(cockpitAnchor);
+
+  // Chin 20mm rotary autocannon turret
+  const gunTurret = new THREE.Group();
+  gunTurret.position.set(0, -0.22, 2.75);
+  const turretPod = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8), darkMetal);
+  const barrelCluster = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 1.25, 8), darkMetal);
+  barrelCluster.rotation.x = Math.PI / 2;
+  barrelCluster.position.set(0, -0.05, 0.65);
+  const muzzlePoint = new THREE.Object3D();
+  muzzlePoint.position.set(0, -0.05, 1.32);
+  const muzzleFlash = createRealisticMuzzleFlash(1.65);
+  muzzleFlash.position.copy(muzzlePoint.position);
+  gunTurret.add(turretPod, barrelCluster, muzzlePoint, muzzleFlash);
+  airframe.add(gunTurret);
+
+  // Main 4-Blade Rotor Mast + Blades + High-RPM Blur Disc
+  const mainRotor = new THREE.Group();
+  mainRotor.position.set(0, 2.15, 0.08);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.65, 10), darkMetal);
+  mast.position.y = -0.22;
+  const hubCap = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.18, 12), darkMetal);
+  mainRotor.add(mast, hubCap);
+  for (let b = 0; b < 4; b++) {
+    const bladeWrap = new THREE.Group();
+    bladeWrap.rotation.y = (b * Math.PI) / 2;
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.04, 5.2), darkMetal);
+    blade.position.z = 2.65;
+    blade.castShadow = true;
+    const tipStripe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.27, 0.044, 0.34),
+      makePbrMat(0xf59e0b, 0.5, 0.1),
+    );
+    tipStripe.position.z = 5.05;
+    bladeWrap.add(blade, tipStripe);
+    mainRotor.add(bladeWrap);
+  }
+  const mainRotorDisc = new THREE.Mesh(
+    new THREE.CircleGeometry(5.2, 28),
+    new THREE.MeshBasicMaterial({
+      color: 0xd1d5db,
+      transparent: true,
+      opacity: 0.16,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
+  );
+  mainRotorDisc.rotation.x = -Math.PI / 2;
+  mainRotorDisc.position.set(0, 2.16, 0.08);
+  mainRotorDisc.visible = true;
+  airframe.add(mainRotor, mainRotorDisc);
+
+  // Tail Anti-Torque Rotor
+  const tailRotor = new THREE.Group();
+  tailRotor.position.set(0.22, 1.98, -6.78);
+  for (let b = 0; b < 2; b++) {
+    const tBlade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.45, 0.12), darkMetal);
+    tBlade.rotation.x = (b * Math.PI) / 2;
+    tailRotor.add(tBlade);
+  }
+  airframe.add(tailRotor);
+
+  return {
+    root,
+    airframe,
+    mainRotor,
+    mainRotorDisc,
+    tailRotor,
+    gunTurret,
+    muzzlePoint,
+    muzzleFlash,
+    pilotMesh,
+    cockpitAnchor,
+  };
+}
+
+/**
+ * Visible 3D billowing parachute canopy & suspension risers for aerial bailout.
+ */
+export function createParachuteCanopy(): THREE.Group {
+  const group = new THREE.Group();
+  const bduSet = typeof document !== 'undefined' ? getBduCamoPbrSet('allies') : null;
+  const canopyMat = makePbrMat(0x6e7e5d, 0.86, 0.03, false, {
+    side: THREE.DoubleSide,
+    ...pbrSetProps(bduSet, 0.008),
+  });
+  const trimMat = makePbrMat(0xd6cdb8, 0.88, 0.02, false, { side: THREE.DoubleSide });
+  const cordMat = makePbrMat(0x1f2421, 0.7, 0.1);
+
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(3.1, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.48),
+    canopyMat,
+  );
+  dome.position.y = 3.4;
+  dome.scale.set(1, 0.68, 1);
+
+  const skirtRing = new THREE.Mesh(new THREE.TorusGeometry(3.04, 0.08, 8, 24), trimMat);
+  skirtRing.rotation.x = Math.PI / 2;
+  skirtRing.position.y = 3.55;
+  group.add(dome, skirtRing);
+
+  for (let i = 0; i < 8; i++) {
+    const ang = (i * Math.PI * 2) / 8;
+    const tx = Math.cos(ang) * 2.95;
+    const tz = Math.sin(ang) * 2.95;
+    const curve = new THREE.LineCurve3(
+      new THREE.Vector3(tx * 0.25, 0.35, tz * 0.25),
+      new THREE.Vector3(tx, 3.55, tz),
+    );
+    const cord = new THREE.Mesh(new THREE.TubeGeometry(curve, 4, 0.014, 4, false), cordMat);
+    group.add(cord);
+  }
+  return group;
 }
 
 

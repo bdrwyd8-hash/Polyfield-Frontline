@@ -4,6 +4,7 @@ import type {
   HudControlId,
   HudControlTransform,
   KeyAction,
+  TargetFps,
 } from './types';
 
 const STORAGE_KEY = 'polyfield_frontline_settings_v5';
@@ -32,6 +33,11 @@ export const DEFAULT_BINDINGS: Record<KeyAction, string> = {
   interact: 'KeyX',
   armory: 'KeyB',
   toggleAccessory: 'KeyT',
+  backpack: 'KeyI',
+  dropBomb: 'KeyC',
+  fireMissile: 'KeyQ',
+  flare: 'KeyE',
+  toggleCamera: 'KeyN',
 };
 
 export const DEFAULT_HUD_LAYOUT: Record<HudControlId, HudControlTransform> = {
@@ -66,20 +72,20 @@ export const DEFAULT_SETTINGS: ControlSettings = {
   showOnScreenControls: true,
   showAimArrow: false,
   aimAssistEnabled: true,
-  graphicsQuality: 'medium',
-  targetFps: 120,
+  graphicsQuality: 'auto',
+  targetFps: 'auto',
   hudOpacity: 0.86,
   hudLayout: cloneDefaultHudLayout(),
 };
 
 function parseQuality(val: unknown): GraphicsQuality {
-  if (val === 'low' || val === 'medium' || val === 'high') return val;
-  return 'medium';
+  if (val === 'auto' || val === 'low' || val === 'medium' || val === 'high') return val;
+  return 'auto';
 }
 
-function parseTargetFps(val: unknown): 60 | 120 | 0 {
-  if (val === 60 || val === 120 || val === 0) return val;
-  return 120;
+function parseTargetFps(val: unknown): TargetFps {
+  if (val === 'auto' || val === 30 || val === 60 || val === 120 || val === 0) return val;
+  return 'auto';
 }
 
 export function loadControlSettings(): ControlSettings {

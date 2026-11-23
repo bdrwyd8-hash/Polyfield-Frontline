@@ -54,6 +54,43 @@ function WeaponSvgFallback({
     );
   }
 
+  if (weaponId === 'm4a1') {
+    return (
+      <svg viewBox="0 0 120 40" className={className} aria-hidden="true">
+        {/* FDE SOPMOD Adjustable Stock & Buffer Tube */}
+        <path
+          d="M5 16 L24 14 L26 23 L7 28 L5 24 Z"
+          fill="#a18259"
+          stroke="#1c1917"
+          strokeWidth="1.4"
+        />
+        <rect x="24" y="15" width="9" height="4" fill="#292524" stroke="#1c1917" strokeWidth="1.2" />
+        {/* Upper / Lower Receiver (FDE Lower + Black Upper) */}
+        <rect x="33" y="13.5" width="29" height="4.5" fill="#292524" stroke="#1c1917" strokeWidth="1.3" />
+        <rect x="33" y="18" width="29" height="4.2" fill="#a18259" stroke="#1c1917" strokeWidth="1.3" />
+        {/* Pistol Grip */}
+        <path d="M34 22 L40 22 L37 33 L31 32 Z" fill="#a18259" stroke="#1c1917" strokeWidth="1.3" />
+        {/* Holographic Sight */}
+        <rect x="39" y="7" width="14" height="6.5" rx="1" fill="#1c1917" stroke="#57534e" strokeWidth="1.2" />
+        <rect x="42" y="8.5" width="8" height="3.5" fill="#0f172a" />
+        {/* Quad-Rail Handguard & Vertical Foregrip */}
+        <rect x="62" y="14" width="25" height="6.2" rx="0.8" fill="#292524" stroke="#1c1917" strokeWidth="1.3" />
+        <rect x="70" y="20" width="5" height="11" rx="0.8" fill="#1c1917" stroke="#44403c" strokeWidth="1.2" />
+        {/* Front A2 Sight Triangle + Barrel & Flash Hider */}
+        <path d="M87 15 L91 9 L93 15 Z" fill="#292524" stroke="#1c1917" strokeWidth="1.1" />
+        <rect x="87" y="15.4" width="24" height="2.4" fill="#1c1917" stroke="#1c1917" strokeWidth="1" />
+        <rect x="110" y="14.7" width="5" height="3.8" fill="#44403c" stroke="#1c1917" strokeWidth="1" />
+        {/* Curved 5.56 STANAG Magazine */}
+        <path
+          d="M52 22 L60 22 L64 36 L55 37 Q52 29 52 22 Z"
+          fill="#44403c"
+          stroke="#1c1917"
+          strokeWidth="1.4"
+        />
+      </svg>
+    );
+  }
+
   if (weaponId === 'ppsh41') {
     return (
       <svg viewBox="0 0 120 38" className={className} aria-hidden="true">

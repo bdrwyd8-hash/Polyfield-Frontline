@@ -11,6 +11,10 @@ interface OnScreenControlsProps {
   onAction: (action: KeyAction, active: boolean) => void;
   onMove: (mx: number, my: number) => void;
   onAimDelta: (dx: number, dy: number) => void;
+  onOpenBackpack: () => void;
+  onDropBomb: () => void;
+  onFireMissile: () => void;
+  onDeployFlares: () => void;
 }
 
 export function OnScreenControls({
@@ -21,8 +25,14 @@ export function OnScreenControls({
   onAction,
   onMove,
   onAimDelta,
+  onOpenBackpack,
+  onDropBomb,
+  onFireMissile,
+  onDeployFlares,
 }: OnScreenControlsProps) {
   const t = STRINGS[lang];
+  const isAircraft = hud.inVehicleKind === 'aircraft';
+  const isInfantry = !hud.inVehicleKind;
   const padRef = useRef<HTMLDivElement | null>(null);
   const [knob, setKnob] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const activePointerId = useRef<number | null>(null);
@@ -126,7 +136,10 @@ export function OnScreenControls({
         />
       </div>
 
-      {/* Peek Left */}
+      {/* Infantry-only Posture, Peek, Slots, Jump, Reload, Grenade */}
+      {isInfantry && (
+        <>
+          {/* Peek Left */}
       <button
         type="button"
         tabIndex={-1}
@@ -375,29 +388,33 @@ export function OnScreenControls({
       >
         <TacticalControlIcon id="grenade" className="w-5 h-5" />
       </button>
+        </>
+      )}
 
-      {/* Aim / ADS */}
-      <button
-        type="button"
-        tabIndex={-1}
-        aria-label={t.aimBtn}
-        title={t.aimBtn}
-        data-testid="btn-aim"
-        style={getStyle('aim')}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          e.currentTarget.blur();
-          triggerInstant('aim');
-        }}
-        className={`${iconBtnBase} w-12 h-12 ${
-          hud.isAds
-            ? 'bg-amber-500 text-stone-950 border-amber-300'
-            : 'bg-stone-950/85 text-stone-100 border-stone-500 hover:bg-stone-800'
-        }`}
-      >
-        <TacticalControlIcon id="aim" className="w-6 h-6" />
-      </button>
+      {/* Aim / ADS (Infantry & Ground Vehicles) */}
+      {!isAircraft && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={t.aimBtn}
+          title={t.aimBtn}
+          data-testid="btn-aim"
+          style={getStyle('aim')}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            e.currentTarget.blur();
+            triggerInstant('aim');
+          }}
+          className={`${iconBtnBase} w-12 h-12 ${
+            hud.isAds
+              ? 'bg-amber-500 text-stone-950 border-amber-300'
+              : 'bg-stone-950/85 text-stone-100 border-stone-500 hover:bg-stone-800'
+          }`}
+        >
+          <TacticalControlIcon id="aim" className="w-6 h-6" />
+        </button>
+      )}
 
       {/* Fire (Supports holding + dragging finger to aim while firing) */}
       <button
@@ -453,7 +470,32 @@ export function OnScreenControls({
         <TacticalControlIcon id="fire" className="w-7 h-7" />
       </button>
 
-      {/* Contextual Enter / Exit Vehicle or Aircraft Button */}
+      {/* Backpack Quick Access Button */}
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={t.backpackBtn}
+        title={t.backpackBtn}
+        data-testid="btn-backpack"
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          e.currentTarget.blur();
+          onOpenBackpack();
+        }}
+        style={{ left: '21%', top: '38%', opacity: hudOpacity }}
+        className={`${iconBtnBase} w-10 h-10 -translate-x-1/2 -translate-y-1/2 bg-stone-950/85 text-emerald-300 border-emerald-500/70 hover:bg-stone-800`}
+      >
+        <TacticalControlIcon id="backpack" className="w-5 h-5" />
+        <span
+          dir="ltr"
+          className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-mono-nums font-bold flex items-center justify-center border border-stone-950"
+        >
+          {hud.backpackMedkits}
+        </span>
+      </button>
+
+      {/* Contextual Enter / Exit Vehicle or Aircraft Parachute Bailout Button */}
       {(hud.nearbyVehicleKind || hud.inVehicleKind) && (
         <button
           type="button"
@@ -467,19 +509,25 @@ export function OnScreenControls({
             e.currentTarget.blur();
             triggerInstant('interact');
           }}
-          style={{ left: '66%', top: '76%', opacity: hudOpacity }}
+          style={{
+            left: isAircraft ? '59%' : '61%',
+            top: isAircraft ? '72%' : '74%',
+            opacity: hudOpacity,
+          }}
           className={`${iconBtnBase} w-11 h-11 -translate-x-1/2 -translate-y-1/2 ${
-            hud.inVehicleKind
-              ? 'bg-amber-500 text-stone-950 border-amber-200'
-              : 'bg-emerald-600/95 text-white border-emerald-300'
+            isAircraft
+              ? 'bg-sky-500 text-stone-950 border-sky-200'
+              : hud.inVehicleKind
+                ? 'bg-amber-500 text-stone-950 border-amber-200'
+                : 'bg-emerald-600/95 text-white border-emerald-300'
           }`}
         >
-          <TacticalControlIcon id="vehicle" className="w-5 h-5" />
+          <TacticalControlIcon id={isAircraft ? 'eject' : 'vehicle'} className="w-5 h-5" />
         </button>
       )}
 
-      {/* Contextual Aircraft Climb / Dive Hold Buttons */}
-      {hud.inVehicleKind === 'aircraft' && (
+      {/* Contextual Aircraft Climb / Dive / Bomb / IR Missile / Flare Controls */}
+      {isAircraft && (
         <>
           <button
             type="button"
@@ -494,7 +542,7 @@ export function OnScreenControls({
             }}
             onPointerUp={() => onAction('leanLeft', false)}
             onPointerCancel={() => onAction('leanLeft', false)}
-            style={{ left: '58%', top: '64%', opacity: hudOpacity }}
+            style={{ left: '79%', top: '31%', opacity: hudOpacity }}
             className={`${iconBtnBase} w-10 h-10 -translate-x-1/2 -translate-y-1/2 bg-sky-700/90 text-white border-sky-300 text-xs font-bold`}
           >
             ▲
@@ -512,16 +560,101 @@ export function OnScreenControls({
             }}
             onPointerUp={() => onAction('leanRight', false)}
             onPointerCancel={() => onAction('leanRight', false)}
-            style={{ left: '58%', top: '76%', opacity: hudOpacity }}
+            style={{ left: '79%', top: '48%', opacity: hudOpacity }}
             className={`${iconBtnBase} w-10 h-10 -translate-x-1/2 -translate-y-1/2 bg-sky-700/90 text-white border-sky-300 text-xs font-bold`}
           >
             ▼
+          </button>
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={t.dropBombBtn}
+            title={t.dropBombBtn}
+            data-testid="btn-drop-bomb"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              e.currentTarget.blur();
+              onDropBomb();
+            }}
+            style={{ left: '69%', top: '39%', opacity: hudOpacity }}
+            className={`${iconBtnBase} w-11 h-11 -translate-x-1/2 -translate-y-1/2 ${
+              hud.aircraftBombs > 0
+                ? 'bg-amber-600/95 text-white border-amber-300'
+                : 'bg-stone-900/80 text-stone-500 border-stone-700'
+            }`}
+          >
+            <TacticalControlIcon id="bomb" className="w-5 h-5" />
+            <span
+              dir="ltr"
+              className="absolute -bottom-1 -right-1 px-1 rounded-full bg-stone-950 text-amber-300 text-[9px] font-mono-nums font-bold border border-amber-500"
+            >
+              {hud.aircraftBombs}
+            </span>
+          </button>
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={t.fireMissileBtn}
+            title={t.fireMissileBtn}
+            data-testid="btn-fire-missile"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              e.currentTarget.blur();
+              onFireMissile();
+            }}
+            style={{ left: '90%', top: '32%', opacity: hudOpacity }}
+            className={`${iconBtnBase} w-11 h-11 -translate-x-1/2 -translate-y-1/2 ${
+              hud.aircraftLockActive && hud.aircraftMissiles > 0
+                ? 'bg-red-600 text-white border-red-200 animate-pulse'
+                : hud.aircraftMissiles > 0
+                  ? 'bg-sky-600/95 text-white border-sky-200'
+                  : 'bg-stone-900/80 text-stone-500 border-stone-700'
+            }`}
+          >
+            <TacticalControlIcon id="missile" className="w-5 h-5" />
+            <span
+              dir="ltr"
+              className="absolute -bottom-1 -right-1 px-1 rounded-full bg-stone-950 text-sky-300 text-[9px] font-mono-nums font-bold border border-sky-400"
+            >
+              {hud.aircraftMissiles}
+            </span>
+          </button>
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={t.flareBtn}
+            title={t.flareBtn}
+            data-testid="btn-flare"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              e.currentTarget.blur();
+              onDeployFlares();
+            }}
+            style={{ left: '71%', top: '61%', opacity: hudOpacity }}
+            className={`${iconBtnBase} w-11 h-11 -translate-x-1/2 -translate-y-1/2 ${
+              hud.aircraftThreatWarning === 'missile' && hud.aircraftFlares > 0
+                ? 'bg-amber-500 text-stone-950 border-amber-100 animate-pulse'
+                : hud.aircraftFlares > 0
+                  ? 'bg-orange-600/95 text-white border-orange-300'
+                  : 'bg-stone-900/80 text-stone-500 border-stone-700'
+            }`}
+          >
+            <TacticalControlIcon id="flare" className="w-5 h-5" />
+            <span
+              dir="ltr"
+              className="absolute -bottom-1 -right-1 px-1 rounded-full bg-stone-950 text-orange-300 text-[9px] font-mono-nums font-bold border border-orange-400"
+            >
+              {hud.aircraftFlares}
+            </span>
           </button>
         </>
       )}
 
       {/* Contextual Base Armory [B] Button */}
-      {hud.nearArmory && !hud.inVehicleKind && (
+      {hud.nearArmory && isInfantry && (
         <button
           type="button"
           tabIndex={-1}
@@ -534,7 +667,7 @@ export function OnScreenControls({
             e.currentTarget.blur();
             triggerInstant('armory');
           }}
-          style={{ left: '66%', top: '54%', opacity: hudOpacity }}
+          style={{ left: '60%', top: '39%', opacity: hudOpacity }}
           className={`${iconBtnBase} w-11 h-11 -translate-x-1/2 -translate-y-1/2 bg-amber-500 text-stone-950 border-amber-200`}
         >
           <TacticalControlIcon id="armory" className="w-5 h-5" />
@@ -543,7 +676,7 @@ export function OnScreenControls({
 
       {/* Contextual Flashlight / Laser Toggle [T] */}
       {hud.activeSlot <= 3 &&
-        !hud.inVehicleKind &&
+        isInfantry &&
         (hud.activeRail === 'flashlight' || hud.activeRail === 'laser') && (
           <button
             type="button"

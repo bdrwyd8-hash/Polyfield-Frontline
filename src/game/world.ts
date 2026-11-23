@@ -19,6 +19,14 @@ import {
   type FlagpoleVisual,
 } from './models';
 import {
+  getArmorSteelPbrSet,
+  getAsphaltPbrSet,
+  getBarkPbrSet,
+  getFoliageAlphaTexture,
+  getRockPbrSet,
+  getTerrainPbrSet,
+} from './pbrTextures';
+import {
   ALLY_AIRFIELD_CENTER,
   ALLY_BASE_CENTER,
   AXIS_AIRFIELD_CENTER,
@@ -40,6 +48,7 @@ export interface BuiltWorld {
   skyColor: number;
   ambientColor: number;
   applyFoxholesToTerrain: (foxholes: FoxholeRecord[]) => void;
+  updateWater: (dt: number, elapsedSec: number) => void;
   dispose: () => void;
 }
 
@@ -286,23 +295,25 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
   const isStalingrad = mapId === 'stalingrad';
 
   const skyColor = isDesert
-    ? 0xecd2a8
+    ? 0xdfb980
     : isForest
       ? 0x9cb3bf
       : isStalingrad
         ? 0x858f99
         : 0x9fc8e8;
   const ambientColor = isDesert
-    ? 0xe5c185
+    ? 0xcca068
     : isForest
       ? 0xc2d4b8
       : isStalingrad
         ? 0xb8c0c8
         : 0xd6cfc2;
 
-  // 1. Massive rolling terrain (800m x 800m) with fine 200x200 grid for crisp foxhole pits & airfields
-  const terrainSize = 800;
-  const segs = 200;
+  const terrainPbr = typeof document !== 'undefined' ? getTerrainPbrSet(mapId) : null;
+
+  // 1. Massive rolling terrain (1120m x 1120m) with fine 216x216 grid for crisp foxhole pits & airfields
+  const terrainSize = 1120;
+  const segs = 216;
   const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, segs, segs);
   terrainGeo.rotateX(-Math.PI / 2);
 
@@ -318,15 +329,15 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     posAttr.setY(i, vy);
 
     const roadDist = Math.abs(vz + vx * 0.31);
-    const onRoad = roadDist < 4.8 && Math.abs(vx) < 215;
+    const onRoad = roadDist < 4.8 && Math.abs(vx) < 310;
 
     if (isDesert) {
-      if (onRoad) cTmp.setHex(0xb89668);
-      else if (vy > 4.2) cTmp.setHex(0xa87d4f);
-      else if (vy < -0.4) cTmp.setHex(0x889b6e);
+      if (onRoad) cTmp.setHex(0x8a643b);
+      else if (vy > 3.6) cTmp.setHex(0x9a6933);
+      else if (vy < -0.4) cTmp.setHex(0x7c8e58);
       else {
-        const tint = (Math.sin(vx * 0.14) + Math.cos(vz * 0.14)) * 0.03;
-        cTmp.setHex(0xd4b27d).offsetHSL(0, 0, tint);
+        const tint = (Math.sin(vx * 0.14) + Math.cos(vz * 0.14)) * 0.028;
+        cTmp.setHex(0xb88443).offsetHSL(0, 0.04, tint);
       }
     } else if (isStalingrad) {
       const tint = (Math.sin(vx * 0.16) + Math.cos(vz * 0.15)) * 0.04;
@@ -365,10 +376,19 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
   terrainGeo.computeVertexNormals();
 
   const terrainMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
     vertexColors: true,
-    roughness: 0.94,
+    roughness: isDesert ? 0.96 : 0.93,
     metalness: 0.02,
-    flatShading: true,
+    flatShading: false,
+    ...(terrainPbr
+      ? {
+          map: terrainPbr.map,
+          bumpMap: terrainPbr.bumpMap,
+          bumpScale: isDesert ? 0.24 : 0.32,
+          ...(terrainPbr.roughnessMap ? { roughnessMap: terrainPbr.roughnessMap } : {}),
+        }
+      : {}),
   });
   const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
   terrainMesh.receiveShadow = true;
@@ -401,22 +421,88 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     terrainGeo.computeVertexNormals();
   };
 
-  // Winding river in Forest & Normandy
+  // Animated flowing river in Forest & Normandy
+  let waterTex: THREE.CanvasTexture | null = null;
+  let waterBumpTex: THREE.CanvasTexture | null = null;
+  let waterMat: THREE.MeshStandardMaterial | null = null;
+  let foamMat: THREE.MeshBasicMaterial | null = null;
+
   if (!isDesert && !isStalingrad) {
-    const waterGeo = new THREE.PlaneGeometry(14, 760);
+    if (typeof document !== 'undefined') {
+      const wc = document.createElement('canvas');
+      wc.width = 128;
+      wc.height = 256;
+      const wctx = wc.getContext('2d');
+      const wbc = document.createElement('canvas');
+      wbc.width = 128;
+      wbc.height = 256;
+      const wbctx = wbc.getContext('2d');
+      if (wctx && wbctx) {
+        wctx.fillStyle = isForest ? '#2a6a85' : '#327c9e';
+        wctx.fillRect(0, 0, 128, 256);
+        wbctx.fillStyle = '#808080';
+        wbctx.fillRect(0, 0, 128, 256);
+        for (let i = 0; i < 64; i++) {
+          const rx = (i * 41) % 128;
+          const ry = (i * 59) % 256;
+          const len = 18 + (i % 24);
+          wctx.fillStyle = i % 3 === 0 ? 'rgba(186, 230, 253, 0.32)' : 'rgba(14, 65, 92, 0.34)';
+          wctx.fillRect(rx, ry, 5 + (i % 7), len);
+          wbctx.fillStyle = i % 2 === 0 ? '#b8b8b8' : '#585858';
+          wbctx.fillRect(rx, ry, 6 + (i % 6), len);
+        }
+        waterTex = new THREE.CanvasTexture(wc);
+        waterTex.colorSpace = THREE.SRGBColorSpace;
+        waterTex.wrapS = THREE.RepeatWrapping;
+        waterTex.wrapT = THREE.RepeatWrapping;
+        waterTex.repeat.set(2.5, 42);
+
+        waterBumpTex = new THREE.CanvasTexture(wbc);
+        waterBumpTex.wrapS = THREE.RepeatWrapping;
+        waterBumpTex.wrapT = THREE.RepeatWrapping;
+        waterBumpTex.repeat.set(2.5, 42);
+        disposables.push(waterTex, waterBumpTex);
+      }
+    }
+
+    const waterGeo = new THREE.PlaneGeometry(14, 1040);
     waterGeo.rotateX(-Math.PI / 2);
-    const waterMat = new THREE.MeshStandardMaterial({
-      color: isForest ? 0x2d6680 : 0x3b82a6,
-      roughness: 0.2,
-      metalness: 0.18,
+    waterMat = new THREE.MeshStandardMaterial({
+      color: waterTex ? 0xffffff : isForest ? 0x2d6680 : 0x3b82a6,
+      ...(waterTex ? { map: waterTex } : {}),
+      ...(waterBumpTex ? { bumpMap: waterBumpTex, bumpScale: 0.22 } : {}),
+      roughness: 0.16,
+      metalness: 0.22,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.88,
     });
     const water = new THREE.Mesh(waterGeo, waterMat);
-    water.position.set(0, -0.45, 0);
+    water.position.set(0, -0.42, 0);
     water.rotation.y = -Math.atan(0.32);
     group.add(water);
     disposables.push(waterGeo, waterMat);
+
+    // Subtle shoreline foam ribbons on both riverbanks
+    const foamGeo = new THREE.PlaneGeometry(0.65, 1040);
+    foamGeo.rotateX(-Math.PI / 2);
+    foamMat = new THREE.MeshBasicMaterial({
+      color: 0xdbeafe,
+      transparent: true,
+      opacity: 0.28,
+      depthWrite: false,
+    });
+    const riverAngle = -Math.atan(0.32);
+    for (const bankOffset of [-6.3, 6.3]) {
+      const foam = new THREE.Mesh(foamGeo, foamMat);
+      foam.rotation.y = riverAngle;
+      foam.position.set(
+        Math.cos(riverAngle) * bankOffset,
+        -0.4,
+        -Math.sin(riverAngle) * bankOffset,
+      );
+      group.add(foam);
+    }
+    disposables.push(foamGeo, foamMat);
   }
 
   // Allied Home Base Resupply Depot (at ALLY_BASE_CENTER for finite ammo resupply)
@@ -498,11 +584,25 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
   });
 
   // Allied & Axis Airfield Runways (elevated level aprons + centerline stripes)
+  const asphaltPbr = typeof document !== 'undefined' ? getAsphaltPbrSet() : null;
+  const steelHangarPbr = typeof document !== 'undefined' ? getArmorSteelPbrSet() : null;
   const runwayAsphaltMat = new THREE.MeshStandardMaterial({
-    color: isDesert ? 0x5c5347 : 0x303338,
+    color: isDesert ? 0x9c8e7a : 0x80848c,
     roughness: 0.9,
-    metalness: 0.06,
+    metalness: 0.05,
+    ...(asphaltPbr
+      ? {
+          map: asphaltPbr.map,
+          bumpMap: asphaltPbr.bumpMap,
+          bumpScale: 0.08,
+          ...(asphaltPbr.roughnessMap ? { roughnessMap: asphaltPbr.roughnessMap } : {}),
+        }
+      : {}),
   });
+  if (steelHangarPbr) {
+    armoryFrameMat.bumpMap = steelHangarPbr.bumpMap;
+    armoryFrameMat.bumpScale = 0.012;
+  }
   const runwayLineMat = new THREE.MeshBasicMaterial({ color: 0xfef3c7 });
   disposables.push(runwayAsphaltMat, runwayLineMat);
 
@@ -512,21 +612,39 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     runwayGrp.position.set(af.x, afY + 0.04, af.z);
     runwayGrp.rotation.y = -0.31;
 
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(12.5, 0.12, 46), runwayAsphaltMat);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(15.0, 0.12, 68), runwayAsphaltMat);
     strip.receiveShadow = true;
     runwayGrp.add(strip);
 
-    for (let s = -18; s <= 18; s += 6) {
-      const dash = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.14, 2.8), runwayLineMat);
+    for (let s = -28; s <= 28; s += 7) {
+      const dash = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 3.2), runwayLineMat);
       dash.position.set(0, 0.01, s);
       runwayGrp.add(dash);
     }
 
-    const windsockPole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 4.2, 6), armoryFrameMat);
-    windsockPole.position.set(-7.5, 2.1, -16);
-    const sock = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.1, 8), armoryBeaconMat);
+    // Open steel aircraft hangar shelter flanking the runway apron
+    const hangarX = 11.8;
+    const hangarZ = -10;
+    for (const hz of [hangarZ - 6, hangarZ, hangarZ + 6]) {
+      const postL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.4, 0.35), armoryFrameMat);
+      postL.position.set(hangarX - 4.4, 2.2, hz);
+      const postR = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.4, 0.35), armoryFrameMat);
+      postR.position.set(hangarX + 4.4, 2.2, hz);
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.35, 0.4), armoryFrameMat);
+      beam.position.set(hangarX, 4.45, hz);
+      runwayGrp.add(postL, postR, beam);
+    }
+    const hangarRoof = new THREE.Mesh(new THREE.BoxGeometry(9.6, 0.22, 13.4), armoryRoofMat);
+    hangarRoof.position.set(hangarX, 4.65, hangarZ);
+    hangarRoof.castShadow = true;
+    hangarRoof.receiveShadow = true;
+    runwayGrp.add(hangarRoof);
+
+    const windsockPole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 4.6, 6), armoryFrameMat);
+    windsockPole.position.set(-9.2, 2.3, -24);
+    const sock = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.25, 8), armoryBeaconMat);
     sock.rotation.z = Math.PI / 2;
-    sock.position.set(-6.9, 4.0, -16);
+    sock.position.set(-8.5, 4.35, -24);
     runwayGrp.add(windsockPole, sock);
 
     group.add(runwayGrp);
@@ -573,22 +691,28 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     ruined?: boolean;
   }> = isStalingrad
     ? [
+        { x: -196, z: 60, w: 7.4, d: 6.0, h: 4.2, rotQuad: 1, roof: 0x45494e, ruined: true },
         { x: -102, z: 32, w: 7.4, d: 6.0, h: 4.2, rotQuad: 1, roof: 0x45494e, ruined: true },
         { x: -64, z: 16, w: 7.2, d: 5.8, h: 4.1, rotQuad: 0, roof: 0x3b3f44, ruined: true },
         { x: 64, z: -16, w: 7.4, d: 6.0, h: 4.2, rotQuad: 2, roof: 0x45494e, ruined: true },
+        { x: 196, z: -60, w: 7.4, d: 6.0, h: 4.2, rotQuad: 3, roof: 0x3b3f44, ruined: true },
       ]
     : isDesert
       ? [
+          { x: -196, z: 60, w: 7.2, d: 5.8, h: 4.0, rotQuad: 1, roof: 0xb69362 },
           { x: -104, z: 32, w: 7.2, d: 5.8, h: 4.0, rotQuad: 1, roof: 0xb69362 },
           { x: -64, z: 10, w: 7.0, d: 5.6, h: 3.9, rotQuad: 0, roof: 0xb69362 },
           { x: 64, z: -10, w: 7.0, d: 5.6, h: 3.9, rotQuad: 2, roof: 0xa48051 },
           { x: 104, z: -32, w: 7.2, d: 5.8, h: 4.0, rotQuad: 3, roof: 0xb69362 },
+          { x: 196, z: -60, w: 7.2, d: 5.8, h: 4.0, rotQuad: 2, roof: 0xa48051 },
         ]
       : [
+          { x: -194, z: 58, w: 7.4, d: 5.8, h: 4.2, rotQuad: 1, roof: isForest ? 0x4b423b : 0x9b4836 },
           { x: -102, z: 32, w: 7.2, d: 5.8, h: 4.1, rotQuad: 1, roof: isForest ? 0x4b423b : 0x9b4836 },
           { x: -86, z: 14, w: 7.4, d: 5.8, h: 4.2, rotQuad: 0, roof: isForest ? 0x4b423b : 0x9b4836 },
           { x: -34, z: -26, w: 6.6, d: 5.4, h: 3.9, rotQuad: 1, roof: 0x5c4c42 },
           { x: 38, z: 28, w: 6.8, d: 5.6, h: 4.0, rotQuad: 3, roof: 0x6b473a },
+          { x: 194, z: -58, w: 7.4, d: 5.8, h: 4.2, rotQuad: 3, roof: isForest ? 0x4b423b : 0x9b4836 },
         ];
 
   houseConfigs.forEach((hc, idx) => {
@@ -683,15 +807,23 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
 
   const bunkerConfigs: Array<{ x: number; z: number; rotQuad: 0 | 1 | 2 | 3 }> = isDesert
     ? [
+        { x: -175, z: 36, rotQuad: 1 },
         { x: -92, z: -32, rotQuad: 1 },
         { x: 92, z: 32, rotQuad: 3 },
+        { x: 175, z: -36, rotQuad: 3 },
       ]
     : isStalingrad
-      ? [{ x: 86, z: -12, rotQuad: 3 }]
+      ? [
+          { x: -165, z: 42, rotQuad: 1 },
+          { x: 86, z: -12, rotQuad: 3 },
+          { x: 165, z: -42, rotQuad: 3 },
+        ]
       : [
+          { x: -172, z: 42, rotQuad: 1 },
           { x: 86, z: -12, rotQuad: 3 },
           { x: 52, z: -42, rotQuad: 2 },
           { x: -48, z: 46, rotQuad: 0 },
+          { x: 172, z: -42, rotQuad: 3 },
         ];
 
   bunkerConfigs.forEach((bc, idx) => {
@@ -705,10 +837,12 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
 
   if (isDesert) {
     const drumSpots = [
+      { x: -182, z: 54 },
       { x: -74, z: -14 },
       { x: 74, z: 14 },
       { x: -8, z: 12 },
       { x: 8, z: -12 },
+      { x: 182, z: -54 },
     ];
     drumSpots.forEach((ds, idx) => {
       const drums = createFuelDrumCluster();
@@ -720,10 +854,12 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     });
   } else if (isForest) {
     const towers = [
+      { x: -168, z: 32 },
       { x: -24, z: 22 },
       { x: 26, z: -22 },
       { x: -96, z: -16 },
       { x: 96, z: 16 },
+      { x: 168, z: -32 },
     ];
     towers.forEach((tw, idx) => {
       const tower = createWoodenWatchtower();
@@ -734,8 +870,10 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     });
   } else if (isNormandy) {
     const towers = [
+      { x: -168, z: 32 },
       { x: -96, z: -16 },
       { x: 96, z: 16 },
+      { x: 168, z: -32 },
     ];
     towers.forEach((tw, idx) => {
       const tower = createWoodenWatchtower();
@@ -746,8 +884,10 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     });
   }
 
-  // 4. Tactical Sandbag Walls & Anti-Tank Hedgehogs
+  // 4. Tactical Sandbag Walls & Anti-Tank Hedgehogs (across all 5 combat sectors)
   const sandbags = [
+    { x: -188, z: 54, rot: 0.7 },
+    { x: -162, z: 48, rot: 1.1 },
     { x: -46, z: 16, rot: 1.2 },
     { x: -24, z: -10, rot: 0.9 },
     { x: 24, z: 10, rot: 1.1 },
@@ -758,6 +898,8 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     { x: 12, z: -16, rot: 0.1 },
     { x: -58, z: -18, rot: 0.7 },
     { x: 58, z: 18, rot: 0.7 },
+    { x: 162, z: -48, rot: 1.1 },
+    { x: 188, z: -54, rot: 0.7 },
   ];
   sandbags.forEach((sb, idx) => {
     const barrier = createSandbagBarrier();
@@ -769,12 +911,14 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
   });
 
   const hedgehogs = [
+    { x: -180, z: 58 },
     { x: -18, z: 5 },
     { x: 18, z: -5 },
     { x: -52, z: 20 },
     { x: 52, z: -20 },
     { x: -108, z: 36 },
     { x: 108, z: -36 },
+    { x: 180, z: -58 },
   ];
   hedgehogs.forEach((hh, idx) => {
     const mesh = createCzechHedgehog();
@@ -784,7 +928,7 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     addObstacleFromCenter(obstacles, `hedgehog_${idx}`, hh.x, hh.z, 0.85, 0.85, 1.4, false);
   });
 
-  // 5. Organic Multi-Tier Pine Trees / Desert Date Palms
+  // 5. Organic Multi-Tier Pine Trees / Desert Date Palms across full 380m arena
   const treePositions: Array<{ x: number; z: number; scale: number }> = [];
   let seed = isDesert ? 4211 : isForest ? 8821 : isStalingrad ? 9412 : 1337;
   const rand = () => {
@@ -792,11 +936,11 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     return seed / 4294967296;
   };
 
-  const targetTrees = isForest ? 260 : isDesert ? 85 : isStalingrad ? 105 : 165;
+  const targetTrees = isForest ? 340 : isDesert ? 120 : isStalingrad ? 140 : 210;
   for (let i = 0; i < targetTrees; i++) {
-    const isPerimeter = i < Math.floor(targetTrees * 0.45);
+    const isPerimeter = i < Math.floor(targetTrees * 0.42);
     const angle = (i / Math.max(1, targetTrees * 0.5)) * Math.PI * 2 + rand() * 0.45;
-    const dist = isPerimeter ? 185 + rand() * 115 : 16 + rand() * 165;
+    const dist = isPerimeter ? 250 + rand() * 140 : 18 + rand() * 230;
     const tx = Math.cos(angle) * dist;
     const tz = Math.sin(angle) * dist;
 
@@ -809,38 +953,49 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
       if (Math.hypot(tx - hc.x, tz - hc.z) < 9.5) tooClose = true;
     }
     for (const clearPt of [ALLY_BASE_CENTER, AXIS_BASE_CENTER, ALLY_AIRFIELD_CENTER, AXIS_AIRFIELD_CENTER]) {
-      if (Math.hypot(tx - clearPt.x, tz - clearPt.z) < 26) tooClose = true;
+      if (Math.hypot(tx - clearPt.x, tz - clearPt.z) < 34) tooClose = true;
     }
     if (tooClose) continue;
 
-    treePositions.push({ x: tx, z: tz, scale: 0.92 + rand() * 0.65 });
-    if (dist < 245) {
-      addObstacleFromCenter(obstacles, `tree_${i}`, tx, tz, 0.72, 0.72, 6.2, true);
+    const scale = 0.92 + rand() * 0.65;
+    treePositions.push({ x: tx, z: tz, scale });
+    if (dist <= 375) {
+      const trunkSpan = Math.max(0.76, 0.72 * scale);
+      addObstacleFromCenter(obstacles, `tree_${i}`, tx, tz, trunkSpan, trunkSpan, 6.2, true);
     }
   }
 
   if (treePositions.length > 0) {
-    const trunkGeo = new THREE.CylinderGeometry(0.2, 0.46, 3.8, 7);
+    const barkPbr =
+      typeof document !== 'undefined' ? getBarkPbrSet(isDesert ? 'palm' : 'pine') : null;
+    const foliageTex =
+      typeof document !== 'undefined' ? getFoliageAlphaTexture(isDesert ? 'palm' : 'pine') : null;
+
+    const trunkGeo = new THREE.CylinderGeometry(0.18, 0.48, 3.8, 10);
     trunkGeo.translate(0, 1.35, 0);
     const trunkMat = new THREE.MeshStandardMaterial({
-      color: isDesert ? 0x7b5c3b : isStalingrad ? 0x3b322b : 0x4d3522,
-      roughness: 0.9,
-      flatShading: true,
+      color: isDesert ? 0xcab092 : isStalingrad ? 0x8f8276 : 0xa8927c,
+      roughness: 0.92,
+      flatShading: false,
+      ...(barkPbr ? { map: barkPbr.map, bumpMap: barkPbr.bumpMap, bumpScale: 0.05 } : {}),
     });
     const crownGeo = isDesert
       ? createDesertPalmCanopyGeometry()
       : createMultiTierPineCanopyGeometry();
     const crownBaseColor = isDesert
-      ? 0x5d8242
+      ? 0xe2e3cf
       : isForest
-        ? 0x2d5a31
+        ? 0xcbdac8
         : isStalingrad
-          ? 0x4a594c
-          : 0x3b6e3c;
+          ? 0xbec8c2
+          : 0xd5e1d1;
     const crownMat = new THREE.MeshStandardMaterial({
       color: crownBaseColor,
-      roughness: 0.84,
-      flatShading: true,
+      roughness: 0.85,
+      metalness: 0.02,
+      flatShading: false,
+      side: THREE.DoubleSide,
+      ...(foliageTex ? { map: foliageTex, alphaTest: 0.42 } : {}),
     });
 
     const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, treePositions.length);
@@ -874,21 +1029,30 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     disposables.push(trunkGeo, trunkMat, crownGeo, crownMat);
   }
 
-  // 6. Organic Non-Boxy Boulders & Rubble Outcrops (sunk into terrain)
-  const rockCount = isStalingrad ? 120 : 96;
+  // 6. Stratified Eroded Boulders & Rubble Outcrops (sunk into terrain across 380m arena)
+  const rockCount = isStalingrad ? 155 : 130;
   const rockGeo = createOrganicBoulderGeometry();
+  const rockPbr = typeof document !== 'undefined' ? getRockPbrSet(mapId) : null;
   const rockBaseColor = isDesert
-    ? 0x9b7a52
+    ? 0xd6bfa2
     : isForest
-      ? 0x5d625e
+      ? 0xb4b8b2
       : isStalingrad
-        ? 0x626569
-        : 0x6f7478;
+        ? 0xa9acb0
+        : 0xbac0c4;
   const rockMat = new THREE.MeshStandardMaterial({
     color: rockBaseColor,
     roughness: 0.92,
     metalness: 0.04,
-    flatShading: true,
+    flatShading: false,
+    ...(rockPbr
+      ? {
+          map: rockPbr.map,
+          bumpMap: rockPbr.bumpMap,
+          bumpScale: 0.06,
+          ...(rockPbr.roughnessMap ? { roughnessMap: rockPbr.roughnessMap } : {}),
+        }
+      : {}),
   });
   const rocks = new THREE.InstancedMesh(rockGeo, rockMat, rockCount);
   rocks.castShadow = true;
@@ -898,9 +1062,9 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
   const rTint = new THREE.Color();
   let placedRocks = 0;
   for (let i = 0; i < rockCount; i++) {
-    const isOuter = i < 42;
+    const isOuter = i < 55;
     const angle = rand() * Math.PI * 2;
-    const dist = isOuter ? 185 + rand() * 95 : 18 + rand() * 165;
+    const dist = isOuter ? 245 + rand() * 140 : 18 + rand() * 225;
     const rx = Math.cos(angle) * dist;
     const rz = Math.sin(angle) * dist;
     if (Math.abs(rz + rx * 0.31) < 8.5) continue;
@@ -913,7 +1077,7 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
       if (Math.hypot(rx - hc.x, rz - hc.z) < 8.5) nearZone = true;
     }
     for (const clearPt of [ALLY_BASE_CENTER, AXIS_BASE_CENTER, ALLY_AIRFIELD_CENTER, AXIS_AIRFIELD_CENTER]) {
-      if (Math.hypot(rx - clearPt.x, rz - clearPt.z) < 25) nearZone = true;
+      if (Math.hypot(rx - clearPt.x, rz - clearPt.z) < 32) nearZone = true;
     }
     if (nearZone) continue;
 
@@ -927,8 +1091,8 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     rTint.setHex(rockBaseColor).offsetHSL(0, 0, (rand() - 0.5) * 0.08);
     rocks.setColorAt(placedRocks, rTint);
 
-    if (dist < 245 && s > 0.95) {
-      addObstacleFromCenter(obstacles, `rock_${placedRocks}`, rx, rz, s * 0.95, s * 0.95, s * 1.0, true);
+    if (dist <= 375 && s > 0.55) {
+      addObstacleFromCenter(obstacles, `rock_${placedRocks}`, rx, rz, s * 1.0, s * 1.0, s * 1.05, true);
     }
     placedRocks++;
   }
@@ -937,7 +1101,6 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
   if (rocks.instanceColor) rocks.instanceColor.needsUpdate = true;
   rocks.computeBoundingSphere();
   group.add(rocks);
-  raycastTargets.push(rocks);
   disposables.push(rockGeo, rockMat);
 
   const allySpawns = [
@@ -953,6 +1116,23 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     { x: AXIS_BASE_CENTER.x - 12, z: AXIS_BASE_CENTER.z + 12 },
   ];
 
+  const updateWater = (dt: number, elapsedSec: number) => {
+    if (waterTex) {
+      waterTex.offset.y = (waterTex.offset.y - dt * 0.16) % 1;
+      waterTex.offset.x = Math.sin(elapsedSec * 0.55) * 0.03;
+    }
+    if (waterBumpTex) {
+      waterBumpTex.offset.y = (waterBumpTex.offset.y - dt * 0.21) % 1;
+      waterBumpTex.offset.x = Math.cos(elapsedSec * 0.48) * 0.025;
+    }
+    if (waterMat) {
+      waterMat.opacity = 0.85 + Math.sin(elapsedSec * 2.1) * 0.04;
+    }
+    if (foamMat) {
+      foamMat.opacity = 0.24 + Math.sin(elapsedSec * 2.8) * 0.08;
+    }
+  };
+
   return {
     group,
     obstacles,
@@ -965,6 +1145,7 @@ export function buildBattlefieldWorld(mapId: MapId): BuiltWorld {
     skyColor,
     ambientColor,
     applyFoxholesToTerrain,
+    updateWater,
     dispose: () => {
       disposables.forEach((d) => d.dispose());
     },

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Move, Pause, Sliders, Volume2, VolumeX } from 'lucide-react';
+import { Briefcase, Move, Pause, Sliders, Volume2, VolumeX } from 'lucide-react';
 import { STRINGS } from '../game/i18n';
 import { ALLY_BASE_CENTER, ARENA_RADIUS, WEAPONS } from '../game/rules';
 import type { HudSnapshot, KillcamInfo, Lang, WeaponId } from '../game/types';
@@ -11,6 +11,7 @@ interface GameHudProps {
   onPause: () => void;
   onOpenSettings: () => void;
   onOpenHudEditor: () => void;
+  onOpenBackpack: () => void;
 }
 
 function WeaponSilhouetteSvg({ weaponId }: { weaponId: WeaponId }) {
@@ -70,6 +71,18 @@ function WeaponSilhouetteSvg({ weaponId }: { weaponId: WeaponId }) {
           fill="#e7e5e4"
           stroke="#1c1917"
           strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+  if (weaponId === 'm4a1') {
+    return (
+      <svg viewBox="0 0 110 34" className="w-24 h-7" aria-hidden="true">
+        <path
+          d="M4 14 L22 12 L24 14 L32 14 L32 12 L37 7 L49 7 L49 12 L80 12 L84 8 L87 13 L106 13 L106 15.5 L83 15.5 L78 17 L71 17 L71 25 L67 25 L67 17 L56 17 L59 30 L51 31 L49 18 L34 18 L31 27 L25 26 L28 18 L20 18 L18 22 L4 23 Z"
+          fill="#e7e5e4"
+          stroke="#1c1917"
+          strokeWidth="1.9"
         />
       </svg>
     );
@@ -167,6 +180,8 @@ function formatClock(totalSeconds: number): string {
 function getKillcamWeaponLabel(weaponId: KillcamInfo['killerWeaponId'], lang: Lang): string {
   if (weaponId === 'tank_cannon') return lang === 'ar' ? 'مدفع الدبابة 75مم' : 'Tank 75mm Cannon';
   if (weaponId === 'aircraft_cannon') return lang === 'ar' ? 'مدفع المقاتلة المزدوج' : 'Fighter Twin Cannons';
+  if (weaponId === 'aircraft_bomb') return lang === 'ar' ? 'قنبلة جوية ثقيلة' : 'Aerial Bomb';
+  if (weaponId === 'aircraft_missile') return lang === 'ar' ? 'صاروخ جو-جو حراري' : 'IR Homing Missile';
   if (weaponId === 'grenade') return lang === 'ar' ? 'قنبلة يدوية' : 'Frag Grenade';
   const w = WEAPONS[weaponId];
   return w ? (lang === 'ar' ? w.nameAr : w.nameEn) : String(weaponId);
@@ -179,9 +194,11 @@ export function GameHud({
   onPause,
   onOpenSettings,
   onOpenHudEditor,
+  onOpenBackpack,
 }: GameHudProps) {
   const t = STRINGS[lang];
   const minimapRef = useRef<HTMLCanvasElement | null>(null);
+  const staticMinimapRef = useRef<{ canvas: HTMLCanvasElement; key: string } | null>(null);
   const weapon = WEAPONS[hud.weaponId];
   const activeZone = hud.zones.find((z) => z.id === hud.activeZoneId) || null;
 
@@ -195,57 +212,71 @@ export function GameHud({
     const scale = (size * 0.44) / ARENA_RADIUS;
     const cx = size / 2;
     const cy = size / 2;
+    const staticKey = `${hud.mapId}|${hud.zones.map((z) => `${z.id}:${z.owner ?? ''}`).join(',')}`;
 
-    ctx.clearRect(0, 0, size, size);
+    if (!staticMinimapRef.current || staticMinimapRef.current.key !== staticKey) {
+      const offscreen = staticMinimapRef.current?.canvas ?? document.createElement('canvas');
+      offscreen.width = size;
+      offscreen.height = size;
+      const sctx = offscreen.getContext('2d');
+      if (sctx) {
+        sctx.clearRect(0, 0, size, size);
+        sctx.fillStyle =
+          hud.mapId === 'desert'
+            ? 'rgba(66, 54, 38, 0.88)'
+            : hud.mapId === 'stalingrad'
+              ? 'rgba(36, 38, 42, 0.88)'
+              : hud.mapId === 'forest'
+                ? 'rgba(20, 32, 24, 0.88)'
+                : 'rgba(28, 36, 28, 0.88)';
+        sctx.fillRect(0, 0, size, size);
 
-    ctx.fillStyle =
-      hud.mapId === 'desert'
-        ? 'rgba(66, 54, 38, 0.88)'
-        : hud.mapId === 'stalingrad'
-          ? 'rgba(36, 38, 42, 0.88)'
-          : hud.mapId === 'forest'
-            ? 'rgba(20, 32, 24, 0.88)'
-            : 'rgba(28, 36, 28, 0.88)';
-    ctx.fillRect(0, 0, size, size);
+        sctx.strokeStyle = 'rgba(214, 196, 165, 0.42)';
+        sctx.lineWidth = 5;
+        sctx.beginPath();
+        sctx.moveTo(cx - 135 * scale, cy + 42 * scale);
+        sctx.lineTo(cx + 135 * scale, cy - 42 * scale);
+        sctx.stroke();
 
-    ctx.strokeStyle = 'rgba(214, 196, 165, 0.42)';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(cx - 135 * scale, cy + 42 * scale);
-    ctx.lineTo(cx + 135 * scale, cy - 42 * scale);
-    ctx.stroke();
+        if (hud.mapId !== 'desert' && hud.mapId !== 'stalingrad') {
+          sctx.strokeStyle = 'rgba(56, 189, 248, 0.42)';
+          sctx.lineWidth = 5;
+          sctx.beginPath();
+          sctx.moveTo(cx + 55 * scale, 0);
+          sctx.lineTo(cx - 55 * scale, size);
+          sctx.stroke();
+        }
 
-    if (hud.mapId !== 'desert' && hud.mapId !== 'stalingrad') {
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.42)';
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(cx + 55 * scale, 0);
-      ctx.lineTo(cx - 55 * scale, size);
-      ctx.stroke();
+        // Allied Home Base Resupply & Armory Station Marker
+        const rx = cx + ALLY_BASE_CENTER.x * scale;
+        const ry = cy + ALLY_BASE_CENTER.z * scale;
+        sctx.fillStyle = '#10b981';
+        sctx.fillRect(rx - 3.5, ry - 3.5, 7, 7);
+        sctx.fillStyle = '#ecfdf5';
+        sctx.fillRect(rx - 2, ry - 0.7, 4, 1.4);
+        sctx.fillRect(rx - 0.7, ry - 2, 1.4, 4);
+
+        for (const z of hud.zones) {
+          const zx = cx + z.x * scale;
+          const zy = cy + z.z * scale;
+          sctx.fillStyle =
+            z.owner === 'allies' ? '#3b82f6' : z.owner === 'axis' ? '#ef4444' : '#d4d4d8';
+          sctx.beginPath();
+          sctx.arc(zx, zy, 6.5, 0, Math.PI * 2);
+          sctx.fill();
+          sctx.fillStyle = '#09090b';
+          sctx.font = 'bold 9px "Barlow Condensed", sans-serif';
+          sctx.textAlign = 'center';
+          sctx.textBaseline = 'middle';
+          sctx.fillText(z.label, zx, zy + 0.5);
+        }
+        staticMinimapRef.current = { canvas: offscreen, key: staticKey };
+      }
     }
 
-    // Allied Home Base Resupply & Armory Station Marker
-    const rx = cx + ALLY_BASE_CENTER.x * scale;
-    const ry = cy + ALLY_BASE_CENTER.z * scale;
-    ctx.fillStyle = '#10b981';
-    ctx.fillRect(rx - 3.5, ry - 3.5, 7, 7);
-    ctx.fillStyle = '#ecfdf5';
-    ctx.fillRect(rx - 2, ry - 0.7, 4, 1.4);
-    ctx.fillRect(rx - 0.7, ry - 2, 1.4, 4);
-
-    for (const z of hud.zones) {
-      const zx = cx + z.x * scale;
-      const zy = cy + z.z * scale;
-      ctx.fillStyle =
-        z.owner === 'allies' ? '#3b82f6' : z.owner === 'axis' ? '#ef4444' : '#d4d4d8';
-      ctx.beginPath();
-      ctx.arc(zx, zy, 6.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#09090b';
-      ctx.font = 'bold 9px "Barlow Condensed", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(z.label, zx, zy + 0.5);
+    ctx.clearRect(0, 0, size, size);
+    if (staticMinimapRef.current) {
+      ctx.drawImage(staticMinimapRef.current.canvas, 0, 0);
     }
 
     for (const actor of hud.minimapActors) {
@@ -334,7 +365,7 @@ export function GameHud({
             className="fixed inset-0 flex items-center justify-center"
           >
             {hud.activeOptic === 'red_dot' && (
-              <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]" />
+              <div className="w-2 h-2 rounded-full bg-red-500 ring-1 ring-red-300/60" />
             )}
             {hud.activeOptic === 'holo' && (
               <svg viewBox="0 0 120 120" className="w-32 h-32" aria-hidden="true">
@@ -494,41 +525,41 @@ export function GameHud({
         </div>
       </div>
 
-      {/* TOP-CENTER: Conquest Ticket Bars + A B C Flags */}
-      <div className="fixed top-3 md:top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
-        <div className="flex items-center gap-2 md:gap-3 bg-stone-950/88 border border-stone-700/80 px-2.5 md:px-3 py-1">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] md:text-[11px] font-bold text-blue-400">{t.allies}</span>
-            <div className="w-14 md:w-28 h-2 bg-stone-800 overflow-hidden">
+      {/* TOP-CENTER: Conquest Ticket Bars + A..E Flags */}
+      <div className="fixed top-2.5 lg:top-4 left-1/2 -translate-x-1/2 max-w-[calc(100vw-290px)] lg:max-w-none flex flex-col items-center gap-1">
+        <div className="flex items-center gap-1 lg:gap-3 bg-stone-950/90 border border-stone-600/80 px-1.5 lg:px-3 py-1">
+          <div className="flex items-center gap-1 lg:gap-1.5">
+            <span className="text-[10px] lg:text-[11px] font-bold text-blue-400">{t.allies}</span>
+            <div className="w-10 lg:w-28 h-2 bg-stone-800 overflow-hidden">
               <div
                 className="h-full bg-blue-500 transition-[width] duration-150"
                 style={{ width: `${alliesPct}%` }}
               />
             </div>
-            <span className="font-mono-nums text-xs md:text-sm font-bold text-stone-100 w-7 text-right">
+            <span className="font-mono-nums text-[11px] lg:text-sm font-bold text-stone-100 w-7 text-right">
               {hud.alliesTickets}
             </span>
           </div>
 
-          <div className="px-1.5 py-0.5 bg-stone-900 border border-stone-700 font-mono-nums text-[11px] font-bold text-amber-300">
+          <div className="px-1.5 py-0.5 bg-stone-900 border border-stone-700 font-mono-nums text-[10px] lg:text-[11px] font-bold text-amber-300">
             {formatClock(hud.timeRemaining)}
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className="font-mono-nums text-xs md:text-sm font-bold text-stone-100 w-7 text-left">
+          <div className="flex items-center gap-1 lg:gap-1.5">
+            <span className="font-mono-nums text-[11px] lg:text-sm font-bold text-stone-100 w-7 text-left">
               {hud.axisTickets}
             </span>
-            <div className="w-14 md:w-28 h-2 bg-stone-800 overflow-hidden">
+            <div className="w-10 lg:w-28 h-2 bg-stone-800 overflow-hidden">
               <div
                 className="h-full bg-red-500 transition-[width] duration-150 ml-auto"
                 style={{ width: `${axisPct}%` }}
               />
             </div>
-            <span className="text-[10px] md:text-[11px] font-bold text-red-400">{t.axis}</span>
+            <span className="text-[10px] lg:text-[11px] font-bold text-red-400">{t.axis}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 lg:gap-1.5">
           {hud.zones.map((z) => {
             const bg =
               z.owner === 'allies'
@@ -539,7 +570,7 @@ export function GameHud({
             return (
               <div
                 key={z.id}
-                className={`w-6 h-6 md:w-7 md:h-7 border-2 flex items-center justify-center font-display font-bold text-xs md:text-sm ${bg}`}
+                className={`w-5 h-5 lg:w-7 lg:h-7 border lg:border-2 flex items-center justify-center font-display font-bold text-[11px] lg:text-sm ${bg}`}
               >
                 {z.label}
               </div>
@@ -562,8 +593,29 @@ export function GameHud({
       </div>
 
       {/* TOP-RIGHT: Settings, Mute, Pause + Killfeed */}
-      <div className="fixed top-3 right-3 md:top-4 md:right-4 flex flex-col items-end gap-1.5">
+      <div className="fixed top-2.5 right-2.5 lg:top-4 lg:right-4 flex flex-col items-end gap-1.5">
         <div className="flex items-center gap-1 pointer-events-auto">
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={t.backpackBtn}
+            title={t.backpackBtn}
+            data-testid="hud-btn-backpack"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.currentTarget.blur();
+              onOpenBackpack();
+            }}
+            className="relative w-8 h-8 lg:w-10 lg:h-10 flex items-center justify-center bg-stone-950/88 border border-stone-700 text-emerald-300 hover:bg-stone-800 cursor-pointer"
+          >
+            <Briefcase className="w-4 h-4" />
+            <span
+              dir="ltr"
+              className="absolute -bottom-1 -right-1 px-1 text-[9px] font-mono-nums font-bold bg-emerald-600 text-white border border-stone-950"
+            >
+              {hud.backpackMedkits}
+            </span>
+          </button>
           <button
             type="button"
             tabIndex={-1}
@@ -575,7 +627,7 @@ export function GameHud({
               e.currentTarget.blur();
               onOpenHudEditor();
             }}
-            className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-stone-950/88 border border-stone-700 text-amber-300 hover:bg-stone-800 cursor-pointer"
+            className="w-8 h-8 lg:w-10 lg:h-10 flex items-center justify-center bg-stone-950/88 border border-stone-700 text-amber-300 hover:bg-stone-800 cursor-pointer"
           >
             <Move className="w-4 h-4" />
           </button>
@@ -589,7 +641,7 @@ export function GameHud({
               e.currentTarget.blur();
               onOpenSettings();
             }}
-            className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-stone-950/88 border border-stone-700 text-amber-400 hover:bg-stone-800 cursor-pointer"
+            className="w-8 h-8 lg:w-10 lg:h-10 flex items-center justify-center bg-stone-950/88 border border-stone-700 text-amber-400 hover:bg-stone-800 cursor-pointer"
           >
             <Sliders className="w-4 h-4" />
           </button>
@@ -602,7 +654,7 @@ export function GameHud({
               e.currentTarget.blur();
               onToggleMute();
             }}
-            className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-stone-950/88 border border-stone-700 text-stone-200 hover:bg-stone-800 cursor-pointer"
+            className="w-8 h-8 lg:w-10 lg:h-10 flex items-center justify-center bg-stone-950/88 border border-stone-700 text-stone-200 hover:bg-stone-800 cursor-pointer"
           >
             {hud.muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
@@ -615,7 +667,7 @@ export function GameHud({
               e.currentTarget.blur();
               onPause();
             }}
-            className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-stone-950/88 border border-stone-700 text-stone-200 hover:bg-stone-800 cursor-pointer"
+            className="w-8 h-8 lg:w-10 lg:h-10 flex items-center justify-center bg-stone-950/88 border border-stone-700 text-stone-200 hover:bg-stone-800 cursor-pointer"
           >
             <Pause className="w-4 h-4" />
           </button>
@@ -727,6 +779,33 @@ export function GameHud({
         </div>
       )}
 
+      {/* WAR THUNDER STYLE AIRCRAFT FLIGHT AIM RING */}
+      {hud.health > 0 && hud.inVehicleKind === 'aircraft' && (
+        <div
+          data-testid="flight-aim-cursor"
+          className="fixed -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+          style={{
+            left: `calc(50% + ${hud.flightAimX}px)`,
+            top: `calc(50% + ${hud.flightAimY}px)`,
+          }}
+        >
+          <svg viewBox="0 0 44 44" className="w-10 h-10" aria-hidden="true">
+            <circle
+              cx="22"
+              cy="22"
+              r="18"
+              fill="none"
+              stroke={hud.aircraftLockActive ? '#ef4444' : 'rgba(248, 250, 252, 0.85)'}
+              strokeWidth="1.8"
+            />
+            <line x1="22" y1="1" x2="22" y2="7" stroke="#f8fafc" strokeWidth="1.6" />
+            <line x1="22" y1="37" x2="22" y2="43" stroke="#f8fafc" strokeWidth="1.6" />
+            <line x1="1" y1="22" x2="7" y2="22" stroke="#f8fafc" strokeWidth="1.6" />
+            <line x1="37" y1="22" x2="43" y2="22" stroke="#f8fafc" strokeWidth="1.6" />
+          </svg>
+        </div>
+      )}
+
       {hud.hitmarkerKind !== 'none' && (
         <svg
           viewBox="0 0 32 32"
@@ -743,7 +822,7 @@ export function GameHud({
       )}
 
       {activeZone && (
-        <div className="fixed top-20 md:top-24 left-1/2 -translate-x-1/2 bg-stone-950/88 border border-stone-700 px-3 py-1 min-w-[190px] text-center">
+        <div className="fixed top-[98px] lg:top-24 left-1/2 -translate-x-1/2 bg-stone-950/90 border border-stone-600/80 px-3 py-1 min-w-[190px] text-center">
           <div className="text-[11px] font-semibold text-stone-200 mb-0.5">
             {activeZone.label} · {lang === 'ar' ? activeZone.nameAr : activeZone.nameEn}
           </div>
@@ -758,46 +837,100 @@ export function GameHud({
         </div>
       )}
 
+      {hud.health > 0 && hud.inVehicleKind === 'aircraft' && hud.aircraftThreatWarning !== 'none' && (
+        <div
+          data-testid="aircraft-threat-warning"
+          dir={lang === 'ar' ? 'rtl' : 'ltr'}
+          className={`fixed top-16 md:top-20 left-1/2 -translate-x-1/2 px-3 py-1 border text-[11px] md:text-xs font-bold whitespace-nowrap shadow-lg animate-pulse ${
+            hud.aircraftThreatWarning === 'pull_up'
+              ? 'bg-amber-950/95 border-amber-400 text-amber-200'
+              : 'bg-red-950/95 border-red-400 text-red-100'
+          }`}
+        >
+          {hud.aircraftThreatWarning === 'eject'
+            ? t.threatEject
+            : hud.aircraftThreatWarning === 'missile'
+              ? t.threatMissile
+              : t.threatPullUp}
+        </div>
+      )}
+
       {hud.health > 0 &&
         (hud.inVehicleKind ? (
-          <div className="fixed bottom-14 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
-            {hud.inVehicleKind === 'aircraft' && (
-              <div className="bg-stone-950/85 border border-sky-500/60 px-2.5 py-0.5 text-[10px] text-sky-200 whitespace-nowrap">
-                {t.aircraftControlsHint}
-              </div>
-            )}
-            <div
-              data-testid="hud-in-vehicle"
-              className="bg-stone-950/92 border border-amber-400/80 px-3.5 py-1.5 flex items-center gap-3 text-[11px] font-bold text-stone-100 whitespace-nowrap shadow"
-            >
-              <span className={hud.inVehicleKind === 'aircraft' ? 'text-sky-300' : 'text-amber-300'}>
-                {hud.inVehicleKind === 'aircraft'
-                  ? t.aircraftName
-                  : hud.inVehicleKind === 'tank'
-                    ? t.tankName
-                    : t.jeepName}
-              </span>
-              <span dir="ltr" className="font-mono-nums text-emerald-400">
-                HP {hud.vehicleHp}/{hud.vehicleMaxHp}
-              </span>
-              <span dir="ltr" className="font-mono-nums text-stone-300">
-                {hud.vehicleSpeedKmh} km/h
-              </span>
-              {hud.inVehicleKind === 'aircraft' && (
+          <div
+            data-testid="hud-in-vehicle"
+            className="fixed bottom-2.5 right-2.5 lg:right-auto lg:left-1/2 lg:-translate-x-1/2 bg-stone-950/88 border border-amber-400/70 px-2.5 lg:px-3 py-1 flex items-center gap-2 lg:gap-2.5 text-[10px] lg:text-[11px] font-bold text-stone-100 whitespace-nowrap shadow"
+          >
+            {hud.inVehicleKind === 'aircraft' ? (
+              <span data-testid="aircraft-cockpit-hud" className="flex items-center gap-2 md:gap-2.5">
                 <span dir="ltr" className="font-mono-nums text-sky-300">
-                  ALT {hud.vehicleAltitudeM}m
+                  THR {hud.aircraftThrottlePct}%
                 </span>
-              )}
-              <span dir="ltr" className="font-mono-nums text-amber-200">
-                {hud.vehicleAmmo}
+                <span dir="ltr" className="font-mono-nums text-amber-300">
+                  BMB {hud.aircraftBombs}/{hud.aircraftBombsMax}
+                </span>
+                <span
+                  dir="ltr"
+                  className={`font-mono-nums ${
+                    hud.aircraftLockActive ? 'text-red-400 animate-pulse' : 'text-sky-200'
+                  }`}
+                >
+                  IR {hud.aircraftMissiles}/{hud.aircraftMissilesMax}
+                </span>
+                <span
+                  dir="ltr"
+                  data-testid="aircraft-flares-count"
+                  className={`font-mono-nums ${
+                    hud.aircraftThreatWarning === 'missile' && hud.aircraftFlares > 0
+                      ? 'text-orange-300 animate-pulse'
+                      : 'text-orange-400'
+                  }`}
+                >
+                  FLR {hud.aircraftFlares}/{hud.aircraftFlaresMax}
+                </span>
+                {hud.aircraftLockActive && (
+                  <span className="px-1 bg-red-600 text-white text-[9px]">
+                    {t.missileLockedLabel}
+                  </span>
+                )}
               </span>
-              <span className="text-stone-400">{t.exitVehicle}</span>
-            </div>
+            ) : (
+              <span className="text-amber-300">
+                {hud.inVehicleKind === 'tank' ? t.tankName : t.jeepName}
+              </span>
+            )}
+            <span dir="ltr" className="font-mono-nums text-emerald-400">
+              HP {hud.vehicleHp}
+            </span>
+            <span dir="ltr" className="font-mono-nums text-stone-300">
+              {hud.vehicleSpeedKmh} km/h
+            </span>
+            {hud.inVehicleKind === 'aircraft' && (
+              <span dir="ltr" className="font-mono-nums text-sky-300">
+                ALT {hud.vehicleAltitudeM}m
+              </span>
+            )}
+            <span dir="ltr" className="font-mono-nums text-amber-200">
+              {hud.vehicleAmmo}
+            </span>
+            <span className="text-stone-400">[X]</span>
+          </div>
+        ) : hud.isParachuting ? (
+          <div
+            dir={lang === 'ar' ? 'rtl' : 'ltr'}
+            data-testid="hud-parachute-banner"
+            className="fixed top-[68px] lg:top-auto lg:bottom-16 left-1/2 -translate-x-1/2 bg-sky-950/92 border border-sky-400 px-3.5 py-1 text-[11px] font-bold text-sky-200 whitespace-nowrap shadow flex items-center gap-2"
+          >
+            <span>{t.parachuteOpenMsg}</span>
+            <span dir="ltr" className="font-mono-nums text-amber-300">
+              {hud.parachuteAltitudeM}m
+            </span>
           </div>
         ) : hud.nearbyVehicleKind ? (
           <div
+            dir={lang === 'ar' ? 'rtl' : 'ltr'}
             data-testid="hud-enter-vehicle"
-            className="fixed bottom-16 left-1/2 -translate-x-1/2 bg-amber-950/92 border border-amber-400 px-3.5 py-1 text-[11px] font-bold text-amber-200 whitespace-nowrap shadow"
+            className="fixed top-[68px] lg:top-auto lg:bottom-16 left-1/2 -translate-x-1/2 bg-amber-950/92 border border-amber-400 px-3.5 py-1 text-[11px] font-bold text-amber-200 whitespace-nowrap shadow"
           >
             {hud.nearbyVehicleKind === 'aircraft'
               ? t.enterAircraft
@@ -807,42 +940,47 @@ export function GameHud({
           </div>
         ) : hud.nearArmory ? (
           <div
+            dir={lang === 'ar' ? 'rtl' : 'ltr'}
             data-testid="hud-armory-prompt"
-            className="fixed bottom-16 left-1/2 -translate-x-1/2 bg-amber-950/95 border border-amber-400 px-3.5 py-1 text-[11px] font-bold text-amber-200 whitespace-nowrap shadow"
+            className="fixed top-[68px] lg:top-auto lg:bottom-16 left-1/2 -translate-x-1/2 bg-amber-950/95 border border-amber-400 px-3.5 py-1 text-[11px] font-bold text-amber-200 whitespace-nowrap shadow"
           >
             {t.armoryPrompt}
           </div>
         ) : hud.outOfAmmo ? (
           <div
+            dir={lang === 'ar' ? 'rtl' : 'ltr'}
             data-testid="hud-out-of-ammo"
-            className="fixed top-20 md:top-24 left-1/2 -translate-x-1/2 bg-red-950/92 border border-red-500 px-3 py-1 text-[11px] font-bold text-red-200 whitespace-nowrap shadow"
+            className="fixed top-[98px] lg:top-24 left-1/2 -translate-x-1/2 bg-red-950/92 border border-red-500 px-3 py-1 text-[11px] font-bold text-red-200 whitespace-nowrap shadow"
           >
             {t.outOfAmmoMsg}
           </div>
         ) : hud.resupplyFlash || hud.nearResupply ? (
           <div
+            dir={lang === 'ar' ? 'rtl' : 'ltr'}
             data-testid="hud-resupply"
-            className="fixed top-20 md:top-24 left-1/2 -translate-x-1/2 bg-emerald-950/92 border border-emerald-400 px-3 py-1 text-[11px] font-bold text-emerald-200 whitespace-nowrap shadow"
+            className="fixed top-[98px] lg:top-24 left-1/2 -translate-x-1/2 bg-emerald-950/92 border border-emerald-400 px-3 py-1 text-[11px] font-bold text-emerald-200 whitespace-nowrap shadow"
           >
             {t.resupplyMsg}
           </div>
         ) : hud.weaponId === 'binoculars' ? (
           <div
+            dir={lang === 'ar' ? 'rtl' : 'ltr'}
             data-testid="hud-binoculars-hint"
-            className="fixed bottom-14 left-1/2 -translate-x-1/2 bg-stone-950/88 border border-amber-500/70 px-3 py-1 text-[11px] font-semibold text-amber-300 whitespace-nowrap"
+            className="fixed top-[68px] lg:top-auto lg:bottom-14 left-1/2 -translate-x-1/2 bg-stone-950/90 border border-amber-500/70 px-3 py-1 text-[11px] font-semibold text-amber-300 whitespace-nowrap"
           >
             {t.binocularsHint}
           </div>
         ) : hud.weaponId === 'shovel' ? (
           <div
+            dir={lang === 'ar' ? 'rtl' : 'ltr'}
             data-testid="hud-shovel-hint"
-            className="fixed bottom-14 left-1/2 -translate-x-1/2 bg-stone-950/88 border border-amber-500/70 px-3 py-1 text-[11px] font-semibold text-amber-300 whitespace-nowrap"
+            className="fixed top-[68px] lg:top-auto lg:bottom-14 left-1/2 -translate-x-1/2 bg-stone-950/90 border border-amber-500/70 px-3 py-1 text-[11px] font-semibold text-amber-300 whitespace-nowrap"
           >
             {t.shovelHint}
           </div>
         ) : null)}
 
-      {hud.health <= 0 ? (
+      {hud.health <= 0 && (
         <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
           <div className="bg-stone-950/92 border border-red-500/70 px-5 py-3 text-center">
             <div className="text-xs uppercase tracking-wider text-red-400 font-semibold">
@@ -888,12 +1026,6 @@ export function GameHud({
             </div>
           )}
         </div>
-      ) : (
-        !hud.pointerLocked && (
-          <div className="hidden lg:block fixed bottom-4 left-1/2 -translate-x-1/2 bg-stone-950/85 border border-stone-700/70 px-3 py-1 text-[11px] text-stone-300 whitespace-nowrap">
-            {t.clickToLock}
-          </div>
-        )
       )}
 
       {/* BOTTOM-LEFT: Health, Stamina, Stance & Lean */}
@@ -919,77 +1051,82 @@ export function GameHud({
               {hud.lean < 0 ? t.peekLeftBtn : t.peekRightBtn}
             </span>
           )}
+          <span dir="ltr" className="font-mono-nums text-emerald-400 font-bold">
+            +{hud.backpackMedkits} MED
+          </span>
           <span dir="ltr" className="font-mono-nums text-stone-400">{hud.stamina}%</span>
         </div>
       </div>
 
-      {/* BOTTOM-RIGHT: Weapon Silhouette, Active Slot, Mag/Reserve & Grenade */}
-      <div className="fixed bottom-3 right-3 md:bottom-4 md:right-4 bg-stone-950/88 border border-stone-700/80 px-3 py-1.5 min-w-[210px] md:min-w-[250px]">
-        <div className="flex items-center justify-between gap-2 mb-0.5">
-          <WeaponSilhouetteSvg weaponId={hud.weaponId} />
-          <div className="text-right">
-            {hud.activeSlot === 4 ? (
-              <div dir="ltr" className="font-mono-nums text-xl md:text-2xl font-bold leading-none text-amber-300">
-                6×30
-              </div>
-            ) : hud.activeSlot === 5 ? (
-              <div
-                dir="ltr"
-                data-testid="foxhole-counter"
-                className="font-mono-nums text-xl md:text-2xl font-bold leading-none text-amber-300"
-              >
-                {hud.foxholesUsed}
-                <span className="text-xs md:text-sm text-stone-400 font-normal">/{hud.foxholesMax}</span>
-              </div>
-            ) : (
-              <div
-                dir="ltr"
-                className={`font-mono-nums text-xl md:text-2xl font-bold leading-none ${
-                  hud.outOfAmmo ? 'text-red-400' : 'text-stone-100'
-                }`}
-              >
-                {hud.magAmmo}
-                <span className="text-xs md:text-sm text-stone-400 font-normal">/{hud.reserveAmmo}</span>
-              </div>
-            )}
-          </div>
-        </div>
-        {hud.isReloading ? (
-          <div className="w-full h-1.5 bg-stone-800 overflow-hidden mb-1">
-            <div
-              className="h-full bg-amber-400"
-              style={{ width: `${Math.round(hud.reloadProgress * 100)}%` }}
-            />
-          </div>
-        ) : null}
-        <div className="flex items-center justify-between text-[10px] md:text-[11px] text-stone-300 gap-2">
-          <span className="truncate max-w-[168px]">
-            [{hud.activeSlot}] {lang === 'ar' ? weapon.nameAr : weapon.nameEn}
-          </span>
-          <div className="flex items-center gap-2 shrink-0">
-            {hud.activeSlot <= 3 &&
-              (hud.activeRail === 'flashlight' || hud.activeRail === 'laser') && (
-                <span
+      {/* BOTTOM-RIGHT: Weapon Silhouette, Active Slot, Mag/Reserve & Grenade (hidden while inside a vehicle to keep cockpit clean) */}
+      {!hud.inVehicleKind && (
+        <div className="fixed bottom-3 right-3 md:bottom-4 md:right-4 bg-stone-950/88 border border-stone-700/80 px-3 py-1.5 min-w-[210px] md:min-w-[250px]">
+          <div className="flex items-center justify-between gap-2 mb-0.5">
+            <WeaponSilhouetteSvg weaponId={hud.weaponId} />
+            <div className="text-right">
+              {hud.activeSlot === 4 ? (
+                <div dir="ltr" className="font-mono-nums text-xl md:text-2xl font-bold leading-none text-amber-300">
+                  6×30
+                </div>
+              ) : hud.activeSlot === 5 ? (
+                <div
                   dir="ltr"
-                  data-testid="hud-accessory-badge"
-                  className={`px-1 py-0.2 text-[9px] font-mono-nums font-bold border ${
-                    hud.accessoryActive
-                      ? hud.activeRail === 'laser'
-                        ? 'bg-red-600/90 text-white border-red-300'
-                        : 'bg-amber-500 text-stone-950 border-amber-200'
-                      : 'bg-stone-900 text-stone-400 border-stone-700'
+                  data-testid="foxhole-counter"
+                  className="font-mono-nums text-xl md:text-2xl font-bold leading-none text-amber-300"
+                >
+                  {hud.foxholesUsed}
+                  <span className="text-xs md:text-sm text-stone-400 font-normal">/{hud.foxholesMax}</span>
+                </div>
+              ) : (
+                <div
+                  dir="ltr"
+                  className={`font-mono-nums text-xl md:text-2xl font-bold leading-none ${
+                    hud.outOfAmmo ? 'text-red-400' : 'text-stone-100'
                   }`}
                 >
-                  [T] {hud.activeRail === 'laser' ? 'LASER' : 'LIGHT'}{' '}
-                  {hud.accessoryActive ? t.accessoryOn : t.accessoryOff}
-                </span>
+                  {hud.magAmmo}
+                  <span className="text-xs md:text-sm text-stone-400 font-normal">/{hud.reserveAmmo}</span>
+                </div>
               )}
-            <span dir="ltr" className="font-mono-nums text-amber-400">
-              [G] {t.grenade} {hud.grenades}
+            </div>
+          </div>
+          {hud.isReloading ? (
+            <div className="w-full h-1.5 bg-stone-800 overflow-hidden mb-1">
+              <div
+                className="h-full bg-amber-400"
+                style={{ width: `${Math.round(hud.reloadProgress * 100)}%` }}
+              />
+            </div>
+          ) : null}
+          <div className="flex items-center justify-between text-[10px] md:text-[11px] text-stone-300 gap-2">
+            <span className="truncate max-w-[168px]">
+              [{hud.activeSlot}] {lang === 'ar' ? weapon.nameAr : weapon.nameEn}
             </span>
+            <div className="flex items-center gap-2 shrink-0">
+              {hud.activeSlot <= 3 &&
+                (hud.activeRail === 'flashlight' || hud.activeRail === 'laser') && (
+                  <span
+                    dir="ltr"
+                    data-testid="hud-accessory-badge"
+                    className={`px-1 py-0.2 text-[9px] font-mono-nums font-bold border ${
+                      hud.accessoryActive
+                        ? hud.activeRail === 'laser'
+                          ? 'bg-red-600/90 text-white border-red-300'
+                          : 'bg-amber-500 text-stone-950 border-amber-200'
+                        : 'bg-stone-900 text-stone-400 border-stone-700'
+                    }`}
+                  >
+                    [T] {hud.activeRail === 'laser' ? 'LASER' : 'LIGHT'}{' '}
+                    {hud.accessoryActive ? t.accessoryOn : t.accessoryOff}
+                  </span>
+                )}
+              <span dir="ltr" className="font-mono-nums text-amber-400">
+                [G] {t.grenade} {hud.grenades}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

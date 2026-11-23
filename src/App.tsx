@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Smartphone } from 'lucide-react';
+import { BackpackModal } from './components/BackpackModal';
 import { GameHud } from './components/GameHud';
 import { HudLayoutEditor } from './components/HudLayoutEditor';
 import { OnScreenControls } from './components/OnScreenControls';
@@ -21,6 +22,7 @@ import {
   MAX_TICKETS,
   MATCH_DURATION_SECONDS,
   PRIMARY_WEAPON_IDS,
+  SLOT2_WEAPON_IDS,
   createInitialZones,
 } from './game/rules';
 import { loadControlSettings, saveControlSettings } from './game/settings';
@@ -115,6 +117,22 @@ const INITIAL_HUD: HudSnapshot = {
   vehicleReticleX: 0,
   vehicleReticleY: 0,
   vehicleReticleVisible: false,
+  aircraftBombs: 2,
+  aircraftBombsMax: 2,
+  aircraftMissiles: 2,
+  aircraftMissilesMax: 2,
+  aircraftFlares: 4,
+  aircraftFlaresMax: 4,
+  aircraftThrottlePct: 75,
+  aircraftLockActive: false,
+  aircraftLockTargetName: null,
+  aircraftThreatWarning: 'none',
+  flightAimX: 0,
+  flightAimY: 0,
+  isParachuting: false,
+  parachuteAltitudeM: 0,
+  backpackMedkits: 2,
+  backpackMedkitsMax: 2,
 };
 
 export default function App() {
@@ -125,6 +143,7 @@ export default function App() {
   const [settings, setSettings] = useState<ControlSettings>(() => loadControlSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hudEditorOpen, setHudEditorOpen] = useState(false);
+  const [backpackOpen, setBackpackOpen] = useState(false);
   const [customizerMode, setCustomizerMode] = useState<'gunsmith' | 'armory' | null>(null);
   const [customizations, setCustomizations] = useState<WeaponCustomizationsMap>(() =>
     loadWeaponCustomizations(),
@@ -192,6 +211,10 @@ export default function App() {
     if (slot1Param && PRIMARY_WEAPON_IDS.includes(slot1Param)) {
       engine.setPrimaryWeapon(slot1Param);
     }
+    const slot2Param = params.get('slot2') as WeaponId | null;
+    if (slot2Param && SLOT2_WEAPON_IDS.includes(slot2Param)) {
+      engine.setSlot2Weapon(slot2Param);
+    }
     const roomParam = params.get('room');
     const onlineParam = params.get('online');
     if (roomParam || onlineParam === '1') {
@@ -204,6 +227,10 @@ export default function App() {
     }
     if (params.get('autostart') === '1') {
       engine.startGame();
+      const boardParam = params.get('board');
+      if (boardParam === 'aircraft' || boardParam === 'jeep' || boardParam === 'tank') {
+        engine.boardTeamVehicle(boardParam);
+      }
     }
 
     return () => {
@@ -224,6 +251,32 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [hud.phase, settingsOpen, customizerMode]);
+
+  useEffect(() => {
+    if (hud.phase !== 'playing') {
+      setBackpackOpen(false);
+      return;
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (settingsOpen || hudEditorOpen || customizerMode !== null) return;
+      if (e.code === settings.bindings.backpack) {
+        e.preventDefault();
+        setBackpackOpen((prev) => {
+          const next = !prev;
+          if (next) {
+            try {
+              document.exitPointerLock?.();
+            } catch {
+              // ignore
+            }
+          }
+          return next;
+        });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [hud.phase, settings.bindings.backpack, settingsOpen, hudEditorOpen, customizerMode]);
 
   const handleEnterLandscape = async () => {
     try {
@@ -300,6 +353,15 @@ export default function App() {
     engineRef.current?.startGame();
   };
 
+  const handleOpenBackpack = () => {
+    try {
+      document.exitPointerLock?.();
+    } catch {
+      // ignore
+    }
+    setBackpackOpen(true);
+  };
+
   const handleSelectMap = (m: MapId) => engineRef.current?.setMap(m);
   const handleSelectGameMode = (gm: GameMode) => engineRef.current?.setGameMode(gm);
   const handleSelectSlot1 = (w: WeaponId) => engineRef.current?.setPrimaryWeapon(w);
@@ -314,6 +376,15 @@ export default function App() {
     engineRef.current?.setVirtualMove(mx, my);
   const handleVirtualAimDelta = (dx: number, dy: number) =>
     engineRef.current?.addVirtualLook(dx, dy);
+  const handleUseMedkit = () => engineRef.current?.useMedkit() ?? false;
+  const handleDropBomb = () => engineRef.current?.dropAircraftBomb();
+  const handleFireMissile = () => engineRef.current?.fireAircraftMissile();
+  const handleDeployFlares = () => engineRef.current?.deployAircraftFlares();
+  const handleSelectSlot = (slot: 1 | 2 | 3 | 4 | 5) => {
+    const act: KeyAction = `slot${slot}` as KeyAction;
+    engineRef.current?.setVirtualAction(act, true);
+    window.setTimeout(() => engineRef.current?.setVirtualAction(act, false), 45);
+  };
 
   const syncOnlineConfig = (
     nextOnline: boolean,
@@ -386,6 +457,7 @@ export default function App() {
             onPause={handlePause}
             onOpenSettings={handleOpenSettings}
             onOpenHudEditor={handleOpenHudEditor}
+            onOpenBackpack={handleOpenBackpack}
           />
           {hud.health > 0 && settings.showOnScreenControls && (
             <OnScreenControls
@@ -396,6 +468,10 @@ export default function App() {
               onAction={handleVirtualAction}
               onMove={handleVirtualMove}
               onAimDelta={handleVirtualAimDelta}
+              onOpenBackpack={handleOpenBackpack}
+              onDropBomb={handleDropBomb}
+              onFireMissile={handleFireMissile}
+              onDeployFlares={handleDeployFlares}
             />
           )}
         </>
@@ -450,6 +526,17 @@ export default function App() {
           onChangeCustomizations={handleCustomizationsChange}
           onChangeCareer={handleCareerChange}
           onClose={handleCloseCustomizer}
+        />
+      )}
+
+      {backpackOpen && hud.phase === 'playing' && (
+        <BackpackModal
+          lang={lang}
+          hud={hud}
+          customizations={customizations}
+          onUseMedkit={handleUseMedkit}
+          onSelectSlot={handleSelectSlot}
+          onClose={() => setBackpackOpen(false)}
         />
       )}
 

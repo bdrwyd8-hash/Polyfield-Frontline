@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getGunmetalPbrSet, getPolymerPbrSet } from './pbrTextures';
 import type {
   GripAttachmentId,
   MagazineAttachmentId,
@@ -15,10 +16,25 @@ function pbr(
   metalness = 0.45,
   extra: Partial<THREE.MeshStandardMaterialParameters> = {},
 ): THREE.MeshStandardMaterial {
+  const isTransparent = Boolean(extra.transparent || extra.emissive);
+  const texSet =
+    isTransparent || typeof document === 'undefined'
+      ? null
+      : metalness >= 0.45
+        ? getGunmetalPbrSet()
+        : getPolymerPbrSet();
   return new THREE.MeshStandardMaterial({
     color,
     roughness,
     metalness,
+    flatShading: false,
+    ...(texSet
+      ? {
+          bumpMap: texSet.bumpMap,
+          bumpScale: metalness >= 0.45 ? 0.0025 : 0.003,
+          roughnessMap: texSet.roughnessMap,
+        }
+      : {}),
     ...extra,
   });
 }
@@ -73,6 +89,16 @@ export function getWeaponMountAnchors(weaponId: WeaponId): WeaponMountAnchors {
         railPos: new THREE.Vector3(0.024, 0.022, -0.29),
         magPos: new THREE.Vector3(0, -0.005, -0.16),
         muzzlePos: new THREE.Vector3(0, 0.022, -0.81),
+        receiverTopY: 0.056,
+      };
+    case 'm4a1':
+      return {
+        opticPos: new THREE.Vector3(0, 0.056, -0.035),
+        stockPos: new THREE.Vector3(0, 0.014, 0.092),
+        gripPos: new THREE.Vector3(0, -0.008, -0.285),
+        railPos: new THREE.Vector3(0.024, 0.024, -0.3),
+        magPos: new THREE.Vector3(0, -0.005, -0.155),
+        muzzlePos: new THREE.Vector3(0, 0.024, -0.78),
         receiverTopY: 0.056,
       };
     case 'stg44':
@@ -181,47 +207,59 @@ export function buildOptic3D(
   const bodyMat = pbr(0x1b1e23, 0.36, 0.84);
   const darkClampMat = pbr(0x111317, 0.44, 0.78);
   const brassDialMat = pbr(0xa88b43, 0.28, 0.86);
-  const glassMat = pbr(0x1b5c82, 0.08, 0.2, {
+  const glassMat = pbr(0x1b5c82, 0.06, 0.15, {
     transparent: true,
-    opacity: 0.42,
+    opacity: 0.22,
+    depthWrite: false,
     emissive: 0x0b2a42,
-    emissiveIntensity: 0.4,
+    emissiveIntensity: 0.28,
   });
   const redDotEmit = new THREE.MeshBasicMaterial({ color: 0xff2b2b });
   const greenDotEmit = new THREE.MeshBasicMaterial({ color: 0x34d399 });
   const fiberMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
 
   // Picatinny Rail Mount Base
-  const railBase = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.008, 0.065), darkClampMat);
-  railBase.position.set(0, 0.004, 0);
+  const railBase = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.007, 0.062), darkClampMat);
+  railBase.position.set(0, 0.0035, 0);
   group.add(railBase);
 
   if (opticId === 'red_dot') {
-    const riser = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.014, 0.045), darkClampMat);
-    riser.position.set(0, 0.014, 0);
+    const riser = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.011, 0.044), darkClampMat);
+    riser.position.set(0, 0.012, 0);
     const frameArch = new THREE.Mesh(
-      new THREE.TorusGeometry(0.015, 0.0032, 6, 14, Math.PI * 1.15),
+      new THREE.TorusGeometry(0.0155, 0.0024, 6, 16, Math.PI * 1.18),
       bodyMat,
     );
-    frameArch.rotation.z = -Math.PI * 0.075;
+    frameArch.rotation.z = -Math.PI * 0.09;
     frameArch.position.set(0, 0.027, -0.004);
-    const lens = new THREE.Mesh(new THREE.CircleGeometry(0.013, 14), glassMat);
+    const lens = new THREE.Mesh(new THREE.CircleGeometry(0.0135, 14), glassMat);
     lens.position.set(0, 0.028, -0.005);
-    group.add(riser, frameArch, lens);
+    const reticleDot = new THREE.Mesh(new THREE.SphereGeometry(0.001, 6, 6), redDotEmit);
+    reticleDot.position.set(0, 0.028, -0.006);
+    group.add(riser, frameArch, lens, reticleDot);
     return { group, lensCenterLocalY: 0.028 };
   }
 
   if (opticId === 'holo') {
-    const hood = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.032, 0.078), bodyMat);
-    hood.position.set(0, 0.024, 0);
-    const batteryPod = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.014, 0.034), darkClampMat);
-    batteryPod.position.set(0, 0.015, -0.024);
-    const lensFront = new THREE.Mesh(new THREE.PlaneGeometry(0.026, 0.02), glassMat);
-    lensFront.position.set(0, 0.026, -0.038);
+    // True hollow EOTech-style hood with clear central sight window
+    const floorDeck = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.006, 0.072), darkClampMat);
+    floorDeck.position.set(0, 0.01, 0);
+    const batteryPod = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.01, 0.028), darkClampMat);
+    batteryPod.position.set(0, 0.012, -0.024);
+    const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.0035, 0.026, 0.056), bodyMat);
+    wallL.position.set(-0.016, 0.026, 0.004);
+    const wallR = wallL.clone();
+    wallR.position.x = 0.016;
+    const roofPlate = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.0035, 0.056), bodyMat);
+    roofPlate.position.set(0, 0.039, 0.004);
+    const lensFront = new THREE.Mesh(new THREE.PlaneGeometry(0.028, 0.022), glassMat);
+    lensFront.position.set(0, 0.026, -0.022);
     lensFront.rotation.y = Math.PI;
-    const lensRear = new THREE.Mesh(new THREE.PlaneGeometry(0.026, 0.02), glassMat);
-    lensRear.position.set(0, 0.026, 0.038);
-    group.add(hood, batteryPod, lensFront, lensRear);
+    const lensRear = new THREE.Mesh(new THREE.PlaneGeometry(0.028, 0.022), glassMat);
+    lensRear.position.set(0, 0.026, 0.03);
+    const holoDot = new THREE.Mesh(new THREE.SphereGeometry(0.001, 6, 6), redDotEmit);
+    holoDot.position.set(0, 0.026, 0.002);
+    group.add(floorDeck, batteryPod, wallL, wallR, roofPlate, lensFront, lensRear, holoDot);
     return { group, lensCenterLocalY: 0.026 };
   }
 

@@ -14,24 +14,35 @@ import {
   chooseBotTacticalAction,
   computeBallisticDrop,
   computeDirectionalDeathPose,
+  computeFlightInstructorInputs,
   computeHitDamage,
   computeLightAimAssist,
+  computeWeaponWallTuck,
   createInitialZones,
+  evaluateAircraftThreats,
   foxholeHeightDelta,
   groundHeightAt,
   groundNormalAt,
+  intersectObstaclesRay,
+  resolveCircleEntities,
   resolveCircleObstacles,
   steerAroundObstacles,
   stepBallisticProjectile,
+  stepBombDrop,
   stepCaptureZone,
   stepFlightPhysics,
+  stepMissileHoming,
+  stepParachutePhysics,
+  stepSuspensionArticulation,
+  stepVehicleDriving,
   testSoldierHitbox,
 } from './rules';
 
-test('large-scale capture zones sit on flat local terrain pads far apart across all 4 maps', () => {
+test('large-scale 5-zone battlefields sit on flat local terrain pads far apart across all 4 maps', () => {
   for (const mapId of ['forest', 'desert', 'normandy', 'stalingrad'] as const) {
     const zones = MAP_ZONES[mapId];
-    assert.ok(Math.hypot(zones[2].x - zones[0].x, zones[2].z - zones[0].z) > 200);
+    assert.equal(zones.length, 5);
+    assert.ok(Math.hypot(zones[4].x - zones[0].x, zones[4].z - zones[0].z) > 350);
     for (const z of zones) {
       const centerH = groundHeightAt(z.x, z.z, mapId);
       const edgeH = groundHeightAt(z.x + 4, z.z - 4, mapId);
@@ -42,7 +53,7 @@ test('large-scale capture zones sit on flat local terrain pads far apart across 
   assert.ok(Math.abs(Math.hypot(n.nx, n.ny, n.nz) - 1) < 0.001);
 });
 
-test('circle obstacle collision slides along walls and clamps expanded 260m arena bounds', () => {
+test('circle obstacle collision slides along walls and clamps expanded 380m arena bounds', () => {
   const obs = [
     { id: 'wall', minX: -2, maxX: 2, minZ: -2, maxZ: 2, height: 3, blocksSight: true },
   ];
@@ -50,14 +61,14 @@ test('circle obstacle collision slides along walls and clamps expanded 260m aren
   assert.ok(res.x >= 2.59);
   assert.equal(res.hitBoundary, false);
 
-  const clamped = resolveCircleObstacles(310, 0, 0.5, obs, ARENA_RADIUS);
+  const clamped = resolveCircleObstacles(420, 0, 0.5, obs, ARENA_RADIUS);
   assert.equal(clamped.hitBoundary, true);
   assert.ok(clamped.x <= ARENA_RADIUS - 0.5 + 0.001);
 });
 
 test('capture zone neutralizes enemy control then captures for allies', () => {
   const zones = createInitialZones('forest');
-  const axisZone = zones[2];
+  const axisZone = zones[4];
   assert.equal(axisZone.owner, 'axis');
 
   let current = axisZone;
@@ -257,12 +268,12 @@ test('weapon attachment stats scale magazine, recoil, suppression, optics zoom, 
   );
 });
 
-test('combat aircraft flight physics climbs, banks, accelerates, and clamps safe altitude floor', () => {
+test('combat aircraft flight physics climbs, banks right wing down on right turn, accelerates, and clamps safe altitude floor', () => {
   const start = { x: 0, y: 12, z: 0, yaw: 0, pitch: 0, roll: 0, speed: 28 };
   const climb = stepFlightPhysics(start, 1, 0.8, 0.8, 1.5, 0.1);
   assert.ok(climb.speed > start.speed);
   assert.ok(climb.y > start.y);
-  assert.ok(climb.roll < -0.1);
+  assert.ok(climb.roll > 0.1);
   assert.ok(climb.yaw < 0);
 
   const groundHug = stepFlightPhysics(
@@ -274,4 +285,165 @@ test('combat aircraft flight physics climbs, banks, accelerates, and clamps safe
     0.1,
   );
   assert.ok(groundHug.y >= 1.5 + 4.2);
+});
+
+test('War Thunder instructor, M4A1 stats, air-to-ground bomb, IR homing missile, and parachute descent work accurately', () => {
+  assert.equal(WEAPONS.m4a1.magSize, 30);
+  assert.equal(WEAPONS.m4a1.automatic, true);
+
+  // Turning right (aimYaw < currentYaw) must produce positive steerInput & bank right
+  const instRight = computeFlightInstructorInputs(0, 0, -0.35, 0.2);
+  assert.ok(instRight.steerInput > 0.4);
+  assert.ok(instRight.pitchInput > 0.2);
+
+  // Bomb falls under gravity while retaining forward motion
+  const bombStep = stepBombDrop(0, 30, 0, 0, 0, 38, 0.5);
+  assert.ok(bombStep.y < 30);
+  assert.ok(bombStep.vy < 0);
+  assert.ok(bombStep.z > 15);
+
+  // IR missile curves smoothly toward off-axis target
+  const mStep = stepMissileHoming(0, 20, 0, 0, 0, 75, 28, 20, 60, 75, 2.8, 0.2);
+  assert.ok(mStep.vx > 5);
+
+  // Parachute arrests fast freefall smoothly and signals landing on ground contact
+  const airPara = stepParachutePhysics(18, -22, 1.0, 2.0, 0.25);
+  assert.equal(airPara.landed, false);
+  assert.ok(airPara.vy > -22);
+  const landPara = stepParachutePhysics(2.3, -5.6, 1.5, 2.0, 0.25);
+  assert.equal(landPara.landed, true);
+  assert.equal(landPara.y, 2.0);
+});
+
+test('solid entity collision pushes soldiers cleanly outside parked vehicles and aircraft hulls', () => {
+  const vehicles = [
+    { x: 10, z: 10, radius: 2.25 },
+    { x: 30, z: 15, radius: 2.85 },
+  ];
+  const insideJeep = resolveCircleEntities(10.8, 10.2, 0.65, vehicles);
+  assert.equal(insideJeep.hit, true);
+  assert.ok(Math.hypot(insideJeep.x - 10, insideJeep.z - 10) >= 2.25 + 0.65 - 0.001);
+
+  const clearPos = resolveCircleEntities(0, 0, 0.65, vehicles);
+  assert.equal(clearPos.hit, false);
+  assert.equal(clearPos.x, 0);
+});
+
+test('ground vehicle driving accelerates smoothly, steers wheels, and inverts turn in reverse', () => {
+  let jeep = { x: 0, z: 0, yaw: 0, speed: 0, steerAngle: 0 };
+  for (let i = 0; i < 15; i++) {
+    jeep = stepVehicleDriving('jeep', jeep, 1, 1, 0.05);
+  }
+  assert.ok(jeep.speed > 7);
+  assert.ok(jeep.yaw < 0); // Right steer turns nose clockwise (negative yaw)
+  assert.ok(jeep.steerAngle < -0.2);
+
+  // Reversing with right steer turns tail right (yaw increases)
+  let revJeep = { x: 0, z: 0, yaw: 0, speed: -5, steerAngle: 0 };
+  revJeep = stepVehicleDriving('jeep', revJeep, -1, 1, 0.1);
+  assert.ok(revJeep.yaw > 0);
+});
+
+test('cockpit threat warnings fire strictly on real danger and clear when threat ends', () => {
+  // Calm takeoff / low level flight -> NO warning
+  assert.equal(
+    evaluateAircraftThreats({
+      altAboveGround: 4.5,
+      verticalSpeed: 1.2,
+      pitch: 0.05,
+      speed: 28,
+      hpRatio: 1.0,
+      incomingMissileDist: null,
+    }),
+    'none',
+  );
+  // Steep dive close to terrain -> pull_up
+  assert.equal(
+    evaluateAircraftThreats({
+      altAboveGround: 11.5,
+      verticalSpeed: -8.5,
+      pitch: -0.35,
+      speed: 44,
+      hpRatio: 0.9,
+      incomingMissileDist: null,
+    }),
+    'pull_up',
+  );
+  // Active IR missile closing in -> missile
+  assert.equal(
+    evaluateAircraftThreats({
+      altAboveGround: 45,
+      verticalSpeed: 0,
+      pitch: 0,
+      speed: 40,
+      hpRatio: 0.9,
+      incomingMissileDist: 110,
+    }),
+    'missile',
+  );
+  // Threat cleared (missile spoofed by flares) -> none
+  assert.equal(
+    evaluateAircraftThreats({
+      altAboveGround: 45,
+      verticalSpeed: 0,
+      pitch: 0,
+      speed: 40,
+      hpRatio: 0.9,
+      incomingMissileDist: null,
+    }),
+    'none',
+  );
+  // Critical airframe damage -> eject
+  assert.equal(
+    evaluateAircraftThreats({
+      altAboveGround: 60,
+      verticalSpeed: -2,
+      pitch: -0.1,
+      speed: 35,
+      hpRatio: 0.24,
+      incomingMissileDist: 100,
+    }),
+    'eject',
+  );
+});
+
+test('weapon wall tuck pulls weapon back cleanly near walls and resets in open space', () => {
+  const open = computeWeaponWallTuck(2.5);
+  assert.equal(open.factor, 0);
+  assert.equal(open.pullbackZ, 0);
+
+  const pressed = computeWeaponWallTuck(0.35);
+  assert.ok(pressed.factor > 0.7);
+  assert.ok(pressed.pullbackZ > 0.14);
+  assert.ok(pressed.cantYaw > 0.25);
+});
+
+test('independent 4-wheel suspension articulation lifts uneven wheels and tilts chassis smoothly', () => {
+  let susp = {
+    wheelOffsets: [0, 0, 0, 0] as [number, number, number, number],
+    wheelVelocities: [0, 0, 0, 0] as [number, number, number, number],
+    chassisHeave: 0,
+    chassisPitch: 0,
+    chassisRoll: 0,
+  };
+  // Front-left wheel hits a 0.28m bump while other 3 remain at 0m
+  for (let i = 0; i < 20; i++) {
+    susp = stepSuspensionArticulation(susp, 0, [0.28, 0, 0, 0], 1.25, 0.9, 0, 0, 0.28, 0.016);
+  }
+  assert.ok(susp.wheelOffsets[0] > 0.14);
+  assert.ok(Math.abs(susp.wheelOffsets[1]) < 0.05);
+  assert.ok(susp.chassisHeave > 0.02);
+  assert.ok(Math.abs(susp.chassisPitch) > 0.02);
+  assert.ok(Math.abs(susp.chassisRoll) > 0.02);
+});
+
+test('analytical obstacle raycast computes exact hit distance without Three.js overhead', () => {
+  const obs = [
+    { id: 'bunker', minX: -2, maxX: 2, minZ: -12, maxZ: -8, height: 3.5, blocksSight: true },
+  ];
+  const hitDist = intersectObstaclesRay(0, 1.5, 0, 0, 0, -1, 50, obs);
+  assert.ok(hitDist !== null && Math.abs(hitDist - 8) < 0.01);
+
+  const missDist = intersectObstaclesRay(0, 1.5, 0, 1, 0, 0, 50, obs);
+  assert.equal(missDist, null);
 });
